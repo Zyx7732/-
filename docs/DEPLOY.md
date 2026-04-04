@@ -114,7 +114,7 @@ sudo npm install -g pm2
 
 ```bash
 cd /var/www
-git clone https://github.com/fan18660557495/fanstudio.git
+git clone <your-repository-url> fanstudio
 cd fanstudio
 npm install
 ```
@@ -196,13 +196,11 @@ npx prisma migrate deploy
 npm run db:seed
 ```
 
-Seed 创建的默认管理员：
+`npm run db:seed` 仅建议用于本地开发或全新测试环境初始化。
 
-| 邮箱 | 密码 |
-|---|---|
-| `admin@example.com` | `admin123` |
-
-> **部署完成后必须立即登录后台修改密码！**
+- 它会在终端输出本地示例账号信息
+- 公开环境不应长期使用 seed 的默认账号和密码
+- 首次登录后应立即修改密码，或按你的团队规范自定义 `prisma/seed.ts`
 
 ### 5. 构建与启动
 
@@ -375,7 +373,7 @@ chmod 600 /var/www/fanstudio/cert/*.pem
 | 项目 | 操作 |
 |---|---|
 | AUTH_SECRET | 必须用 `openssl rand -base64 32` 重新生成 |
-| 管理员密码 | 部署后立即登录后台修改 `admin123` |
+| 管理员密码 | 部署后立即修改 seed 初始化的默认密码，或禁用默认账号 |
 | MySQL | 不要对公网开放 3306 端口 |
 | .env 权限 | `chmod 600 .env` |
 | cert 权限 | `chmod 600 cert/*.pem` |

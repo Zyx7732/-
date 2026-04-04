@@ -6,14 +6,19 @@ const prisma = new PrismaClient()
 async function main() {
   console.log("开始初始化数据库...")
 
+  const adminEmail = "owner@local.test"
+  const adminPassword = "ChangeMeAdmin123!"
+  const viewerEmail = "viewer@local.test"
+  const viewerPassword = "ChangeMeViewer123!"
+
   // 创建管理员用户
-  const hashedPassword = await bcrypt.hash("admin123", 10)
+  const hashedPassword = await bcrypt.hash(adminPassword, 10)
 
   const admin = await prisma.user.upsert({
-    where: { email: "admin@example.com" },
+    where: { email: adminEmail },
     update: { password: hashedPassword, name: "Fan", role: "ADMIN", bio: "一名热爱设计的创作者，专注于用户体验与视觉设计。" },
     create: {
-      email: "admin@example.com",
+      email: adminEmail,
       password: hashedPassword,
       name: "Fan",
       role: "ADMIN",
@@ -24,12 +29,12 @@ async function main() {
   console.log("管理员用户已创建:", admin.email)
 
   // 创建体验账户（只读，用于公开演示）
-  const demoPassword = await bcrypt.hash("demo123", 10)
+  const demoPassword = await bcrypt.hash(viewerPassword, 10)
   const demo = await prisma.user.upsert({
-    where: { email: "demo@example.com" },
+    where: { email: viewerEmail },
     update: { password: demoPassword, name: "体验用户", role: "VIEWER" },
     create: {
-      email: "demo@example.com",
+      email: viewerEmail,
       password: demoPassword,
       name: "体验用户",
       role: "VIEWER",
@@ -101,11 +106,30 @@ async function main() {
     create: {
       id: "settings",
       siteName: "Fan's Studio",
+      defaultLocale: "ZH",
       socialLinks: {
         weibo: "",
         xiaohongshu: "",
         dribbble: "",
         behance: "",
+      },
+      navI18n: {
+        zh: {
+          logoText: "Fan's Studio",
+          worksDesign: "设计作品",
+          worksDev: "开发作品",
+          blog: "知识分享",
+          tutorials: "视频教程",
+          about: "关于我",
+        },
+        en: {
+          logoText: "Fan's Studio",
+          worksDesign: "Design",
+          worksDev: "Development",
+          blog: "Blog",
+          tutorials: "Tutorials",
+          about: "About",
+        },
       },
     },
   })
@@ -113,15 +137,15 @@ async function main() {
   console.log("网站设置已创建")
   console.log("数据库初始化完成！")
   console.log("")
-  console.log("默认管理员账号:")
-  console.log("  邮箱: admin@example.com")
-  console.log("  密码: admin123")
+  console.log("本地管理员账号:")
+  console.log(`  邮箱: ${adminEmail}`)
+  console.log(`  密码: ${adminPassword}`)
   console.log("")
-  console.log("体验账户（只读）:")
-  console.log("  邮箱: demo@example.com")
-  console.log("  密码: demo123")
+  console.log("本地只读账户:")
+  console.log(`  邮箱: ${viewerEmail}`)
+  console.log(`  密码: ${viewerPassword}`)
   console.log("")
-  console.log("请登录管理员账号后立即修改密码！")
+  console.log("这些账号仅用于本地开发，请勿直接用于公开环境。")
 }
 
 main()

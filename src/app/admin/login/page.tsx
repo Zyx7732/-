@@ -8,8 +8,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AdminThemeWrapper } from "@/components/admin/AdminThemeWrapper"
+import { useUiLocale } from "@/hooks/useUiLocale"
 
 export default function LoginPage() {
+  const { locale } = useUiLocale("zh")
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -30,13 +33,13 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        setError("邮箱或密码错误")
+        setError(t("邮箱或密码错误", "Invalid email or password"))
       } else {
         router.push("/admin")
         router.refresh()
       }
     } catch {
-      setError("登录失败，请重试")
+      setError(t("登录失败，请重试", "Login failed, please try again"))
     } finally {
       setLoading(false)
     }
@@ -49,9 +52,9 @@ export default function LoginPage() {
         <Card className="relative z-10 w-full max-w-sm rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm">
           <CardHeader className="text-center">
             <CardTitle className="font-serif text-2xl font-bold tracking-tight">
-              后台登录
+              {t("后台登录", "Admin Sign In")}
             </CardTitle>
-            <CardDescription>请输入您的账号和密码</CardDescription>
+            <CardDescription>{t("请输入您的账号和密码", "Enter your account and password")}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -61,18 +64,18 @@ export default function LoginPage() {
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="email">邮箱</Label>
+                <Label htmlFor="email">{t("邮箱", "Email")}</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@example.com"
+                  placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">密码</Label>
+                <Label htmlFor="password">{t("密码", "Password")}</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -93,7 +96,7 @@ export default function LoginPage() {
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "登录中..." : "登录"}
+                {loading ? t("登录中...", "Signing in...") : t("登录", "Sign In")}
               </Button>
             </form>
           </CardContent>
