@@ -3,8 +3,12 @@
 import { useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 export default function NewPostPage() {
+  const { locale } = useAdminUiLocale()
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
+  const isEn = locale === "en"
   const router = useRouter()
   const creating = useRef(false)
 
@@ -17,7 +21,7 @@ export default function NewPostPage() {
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({
-        title: "无标题文章",
+        title: isEn ? "Untitled Post" : "无标题文章",
         slug: `draft-${Date.now()}`,
       }),
     })
@@ -26,21 +30,21 @@ export default function NewPostPage() {
         if (data?.id) {
           router.replace(`/admin/posts/${data.id}/edit`)
         } else {
-          toast.error(data?.error || "创建失败")
+          toast.error(data?.error || (isEn ? "Create failed" : "创建失败"))
           router.replace("/admin/posts")
         }
       })
       .catch(() => {
-        toast.error("网络错误")
+        toast.error(isEn ? "Network error" : "网络错误")
         router.replace("/admin/posts")
       })
-  }, [router])
+  }, [router, isEn])
 
   return (
     <div className="flex items-center justify-center py-20">
       <div className="flex items-center gap-3 text-muted-foreground">
         <i className="ri-loader-4-line animate-spin text-lg" />
-        <span className="text-sm">正在创建文章…</span>
+        <span className="text-sm">{t("正在创建文章…", "Creating post…")}</span>
       </div>
     </div>
   )

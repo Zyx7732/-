@@ -21,6 +21,7 @@ import { TableToolbar, type BatchAction } from "@/components/admin/TableToolbar"
 import { TablePagination } from "@/components/admin/TablePagination"
 import { SortableTableHead } from "@/components/admin/SortableTableHead"
 import { ConfirmPopover } from "@/components/admin/ConfirmPopover"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 type Tutorial = {
   id: string
@@ -34,6 +35,8 @@ type Tutorial = {
 }
 
 export default function TutorialsPage() {
+  const { locale } = useAdminUiLocale()
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
   const router = useRouter()
   const [list, setList] = useState<Tutorial[]>([])
   const [loading, setLoading] = useState(true)
@@ -51,17 +54,17 @@ export default function TutorialsPage() {
     if (categories.length === 0) return []
     return [{
       key: "category.name",
-      label: "分类",
+      label: t("分类", "Category"),
       options: categories.map((c) => ({ label: c, value: c })),
     }]
   }, [categories])
 
   const batchActions: BatchAction[] = useMemo(() => [
     {
-      label: "删除", icon: "ri-delete-bin-line", variant: "destructive" as const, onClick: handleBatchDelete,
-      needConfirm: true, confirmTitle: `确定删除选中的 ${tc.selectedIds.size} 个教程？`, confirmDescription: "删除后不可恢复",
+      label: t("删除", "Delete"), icon: "ri-delete-bin-line", variant: "destructive" as const, onClick: handleBatchDelete,
+      needConfirm: true, confirmTitle: t(`确定删除选中的 ${tc.selectedIds.size} 个教程？`, `Delete ${tc.selectedIds.size} selected tutorials?`), confirmDescription: t("删除后不可恢复", "This action cannot be undone"),
     },
-  ], [tc.selectedIds])
+  ], [tc.selectedIds, locale])
 
   async function load() {
     setLoading(true)
@@ -83,8 +86,8 @@ export default function TutorialsPage() {
         method: "PUT", headers: { "Content-Type": "application/json" },
         credentials: "include", body: JSON.stringify({ sortOrder }),
       })
-      if (!res.ok) toast.error("排序保存失败")
-    } catch { toast.error("网络错误") }
+      if (!res.ok) toast.error(t("排序保存失败", "Failed to save sort order"))
+    } catch { toast.error(t("网络错误", "Network error")) }
   }
 
   function handleReorder(reordered: Tutorial[]) {
@@ -102,12 +105,12 @@ export default function TutorialsPage() {
       const res = await fetch("/api/tutorials", {
         method: "POST", headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ title: "无标题教程", slug: `draft-${Date.now()}`, videoUrl: "" }),
+        body: JSON.stringify({ title: t("无标题教程", "Untitled Tutorial"), slug: `draft-${Date.now()}`, videoUrl: "" }),
       })
       const data = await res.json()
       if (res.ok && data?.id) router.push(`/admin/tutorials/${data.id}/edit`)
-      else toast.error(data?.error || "创建失败")
-    } catch { toast.error("网络错误") }
+      else toast.error(data?.error || t("创建失败", "Create failed"))
+    } catch { toast.error(t("网络错误", "Network error")) }
     finally { setCreating(false) }
   }
 
@@ -116,7 +119,7 @@ export default function TutorialsPage() {
     try {
       const res = await fetch(`/api/tutorials/${id}`, { method: "DELETE", credentials: "include" })
       if (res.ok) setList((prev) => prev.filter((t) => t.id !== id))
-      else { const err = await res.json().catch(() => ({})); toast.error(err.error || "删除失败") }
+      else { const err = await res.json().catch(() => ({})); toast.error(err.error || t("删除失败", "Delete failed")) }
     } finally { setDeletingId(null) }
   }
 
@@ -128,13 +131,13 @@ export default function TutorialsPage() {
         method: "DELETE", headers: { "Content-Type": "application/json" },
         credentials: "include", body: JSON.stringify({ ids }),
       })
-      if (res.ok) { setList((prev) => prev.filter((t) => !ids.includes(t.id))); tc.clearSelection(); toast.success(`已删除 ${ids.length} 个教程`) }
-      else toast.error("批量删除失败")
-    } catch { toast.error("网络错误") }
+      if (res.ok) { setList((prev) => prev.filter((t) => !ids.includes(t.id))); tc.clearSelection(); toast.success(t(`已删除 ${ids.length} 个教程`, `${ids.length} tutorials deleted`)) }
+      else toast.error(t("批量删除失败", "Batch delete failed"))
+    } catch { toast.error(t("网络错误", "Network error")) }
   }
 
   function formatDate(dateStr: string) {
-    try { return new Date(dateStr).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }) }
+    try { return new Date(dateStr).toLocaleDateString(locale === "en" ? "en-US" : "zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }) }
     catch { return dateStr }
   }
 
@@ -161,9 +164,9 @@ export default function TutorialsPage() {
               <Link href={`/tutorials#${item.slug}`} target="_blank"><i className="ri-eye-line" /></Link>
             </Button>
             <ConfirmPopover
-              title="确定删除该教程？"
-              description="删除后不可恢复"
-              confirmText="删除"
+              title={t("确定删除该教程？", "Delete this tutorial?")}
+              description={t("删除后不可恢复", "This action cannot be undone")}
+              confirmText={t("删除", "Delete")}
               onConfirm={() => handleDelete(item.id)}
               align="end"
             >
@@ -181,11 +184,11 @@ export default function TutorialsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">视频教程</h1>
-          <p className="text-muted-foreground mt-1">管理视频教程合集</p>
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">{t("视频教程", "Tutorials")}</h1>
+          <p className="text-muted-foreground mt-1">{t("管理视频教程合集", "Manage tutorial collection")}</p>
         </div>
         <Button onClick={createDraft} disabled={creating}>
-          {creating ? "创建中…" : "添加教程"}
+          {creating ? t("创建中…", "Creating…") : t("添加教程", "New Tutorial")}
         </Button>
       </div>
 
@@ -193,7 +196,7 @@ export default function TutorialsPage() {
         <TableToolbar
           searchValue={tc.searchTerm}
           onSearchChange={tc.setSearchTerm}
-          searchPlaceholder="搜索教程标题…"
+          searchPlaceholder={t("搜索教程标题…", "Search tutorial titles…")}
           filters={toolbarFilters}
           filterValues={tc.filters}
           onFilterChange={tc.setFilter}
@@ -204,13 +207,13 @@ export default function TutorialsPage() {
 
         {tc.isFiltering && (
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs text-muted-foreground"><i className="ri-filter-line mr-1" />筛选模式 · 拖拽排序已暂停</span>
-            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={tc.resetFilters}>清除筛选</Button>
+            <span className="text-xs text-muted-foreground"><i className="ri-filter-line mr-1" />{t("筛选模式 · 拖拽排序已暂停", "Filter mode · drag sort paused")}</span>
+            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={tc.resetFilters}>{t("清除筛选", "Clear filters")}</Button>
           </div>
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground">加载中…</div>
+          <div className="flex items-center justify-center py-12 text-muted-foreground">{t("加载中…", "Loading…")}</div>
         ) : tc.isFiltering ? (
           <Table>
             <TableHeader>
@@ -218,16 +221,16 @@ export default function TutorialsPage() {
                 <TableHead className="w-[40px]">
                   <Checkbox checked={tc.isAllSelected} onCheckedChange={() => tc.toggleSelectAll()} />
                 </TableHead>
-                <SortableTableHead column="title" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Tutorial)}>标题</SortableTableHead>
-                <TableHead>分类</TableHead>
-                <TableHead>链接</TableHead>
-                <SortableTableHead column="createdAt" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Tutorial)}>创建时间</SortableTableHead>
-                <TableHead className="w-[100px]">操作</TableHead>
+                <SortableTableHead column="title" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Tutorial)}>{t("标题", "Title")}</SortableTableHead>
+                <TableHead>{t("分类", "Category")}</TableHead>
+                <TableHead>{t("链接", "Link")}</TableHead>
+                <SortableTableHead column="createdAt" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Tutorial)}>{t("创建时间", "Created")}</SortableTableHead>
+                <TableHead className="w-[100px]">{t("操作", "Actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {tc.pagedData.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">无匹配结果</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">{t("无匹配结果", "No matches found")}</TableCell></TableRow>
               ) : tc.pagedData.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="w-[40px]"><Checkbox checked={tc.selectedIds.has(item.id)} onCheckedChange={() => tc.toggleSelect(item.id)} /></TableCell>
@@ -245,14 +248,14 @@ export default function TutorialsPage() {
                   <TableHead className="w-[40px]">
                     <Checkbox checked={tc.isAllSelected} onCheckedChange={() => tc.toggleSelectAll()} />
                   </TableHead>
-                  <TableHead>标题</TableHead>
-                  <TableHead>分类</TableHead>
-                  <TableHead>链接</TableHead>
-                  <TableHead>创建时间</TableHead>
-                  <TableHead className="w-[100px]">操作</TableHead>
+                  <TableHead>{t("标题", "Title")}</TableHead>
+                  <TableHead>{t("分类", "Category")}</TableHead>
+                  <TableHead>{t("链接", "Link")}</TableHead>
+                  <TableHead>{t("创建时间", "Created")}</TableHead>
+                  <TableHead className="w-[100px]">{t("操作", "Actions")}</TableHead>
                 </TableRow>
               </TableHeader>
-              <SortableTableBody items={list} columnCount={7} emptyText="暂无教程，点击「添加教程」添加">
+              <SortableTableBody items={list} columnCount={7} emptyText={t("暂无教程，点击「添加教程」添加", "No tutorials yet. Click \"New Tutorial\" to add one.")}>
                 {(item) => (
                   <>
                     <TableCell className="w-[40px]">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/require-admin"
 import prisma from "@/lib/prisma"
+import { safeDeleteKnowledgeSource } from "@/lib/ai/knowledge-trigger"
 
 export const dynamic = "force-dynamic"
 
@@ -13,5 +14,8 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "ids required" }, { status: 400 })
   }
   await prisma.videoTutorial.deleteMany({ where: { id: { in: ids } } })
+  for (const id of ids as string[]) {
+    await safeDeleteKnowledgeSource("TUTORIAL", id)
+  }
   return NextResponse.json({ ok: true })
 }

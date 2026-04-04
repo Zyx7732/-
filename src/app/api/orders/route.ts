@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/require-admin"
 import prisma from "@/lib/prisma"
 import { sendOrderEmail } from "@/lib/email"
 import { normalizeSiteName } from "@/lib/page-copy"
+import { DEFAULT_LOCALE, isLocale, toPrismaLocale } from "@/lib/i18n"
 
 export const dynamic = "force-dynamic"
 
@@ -18,7 +19,8 @@ function generateOrderNo(): string {
 /** POST: 创建订单。支持免费直接完成、付费新购、付费升级（versionId + upgradeAmount）。 */
 export async function POST(request: NextRequest) {
   const body = await request.json()
-  const { workId, buyerEmail, buyerName, versionId, upgradeFromId, upgradeAmount } = body
+  const { workId, buyerEmail, buyerName, buyerLocale, versionId, upgradeFromId, upgradeAmount } = body
+  const locale = isLocale(buyerLocale) ? buyerLocale : DEFAULT_LOCALE
 
   if (!workId || typeof workId !== "string") {
     return NextResponse.json({ error: "缺少 workId" }, { status: 400 })
@@ -86,6 +88,7 @@ export async function POST(request: NextRequest) {
         status: "PAID",
         buyerEmail: buyerEmail.trim().toLowerCase(),
         buyerName: buyerName?.trim() || null,
+        buyerLocale: toPrismaLocale(locale),
         paidAt: new Date(),
       },
     })
@@ -105,6 +108,7 @@ export async function POST(request: NextRequest) {
       deliveryUrl: dUrl,
       currentVersion: targetVersion?.version || work.currentVersion,
       wechat: socialLinks.wechat || null,
+      locale,
     }).catch(() => {})
 
     return NextResponse.json({
@@ -126,6 +130,7 @@ export async function POST(request: NextRequest) {
       status: "PENDING",
       buyerEmail: buyerEmail.trim().toLowerCase(),
       buyerName: buyerName?.trim() || null,
+      buyerLocale: toPrismaLocale(locale),
     },
   })
   return NextResponse.json({
@@ -195,6 +200,7 @@ export async function GET(request: NextRequest) {
       workId: o.work.id,
       buyerEmail: o.buyerEmail,
       buyerName: o.buyerName,
+      buyerLocale: o.buyerLocale,
       amount: Number(o.amount),
       status: o.status,
       paidAt: o.paidAt,

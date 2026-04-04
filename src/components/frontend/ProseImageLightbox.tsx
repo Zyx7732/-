@@ -5,12 +5,17 @@
  */
 import { useState, useCallback, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
+import { usePathname } from "next/navigation"
+import { detectLocaleFromPath } from "@/lib/i18n-path"
 
 interface ProseImageLightboxProps {
   children: React.ReactNode
 }
 
 export function ProseImageLightbox({ children }: ProseImageLightboxProps) {
+  const pathname = usePathname()
+  const locale = detectLocaleFromPath(pathname || "/")
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
   const containerRef = useRef<HTMLDivElement>(null)
   const [images, setImages] = useState<string[]>([])
   const [lightboxOpen, setLightboxOpen] = useState(false)
@@ -22,25 +27,23 @@ export function ProseImageLightbox({ children }: ProseImageLightboxProps) {
     if (!container) return
 
     const imgElements = container.querySelectorAll<HTMLImageElement>("img")
-    const srcList: string[] = []
-
     imgElements.forEach((img) => {
-      const src = img.getAttribute("src")
-      if (!src) return
-      srcList.push(src)
       img.style.cursor = "zoom-in"
     })
-    setImages(srcList)
 
     const handleClick = (e: Event) => {
       const target = e.target as HTMLElement
       if (target.tagName !== "IMG") return
+      const currentImages = Array.from(container.querySelectorAll<HTMLImageElement>("img"))
+        .map((img) => img.getAttribute("src"))
+        .filter((src): src is string => Boolean(src))
       const src = target.getAttribute("src")
       if (!src) return
-      const idx = srcList.indexOf(src)
+      const idx = currentImages.indexOf(src)
       if (idx === -1) return
       e.preventDefault()
       e.stopPropagation()
+      setImages(currentImages)
       setCurrentIndex(idx)
       setLightboxOpen(true)
     }
@@ -126,7 +129,7 @@ export function ProseImageLightbox({ children }: ProseImageLightboxProps) {
       <img
         key={images[currentIndex]}
         src={images[currentIndex]}
-        alt={`图片 ${currentIndex + 1}`}
+        alt={t(`图片 ${currentIndex + 1}`, `Image ${currentIndex + 1}`)}
         onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
         className="select-none"

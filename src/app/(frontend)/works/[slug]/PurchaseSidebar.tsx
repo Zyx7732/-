@@ -2,8 +2,10 @@
 /** 作品详情页右侧购买侧栏：价格、购买/升级、邮箱、订单校验与支付跳转。 */
 import { CardDescriptionHtml } from "@/components/frontend/CardDescriptionHtml"
 import { useState, useEffect } from "react"
+import { usePathname } from "next/navigation"
 import { createPortal } from "react-dom"
 import { GlowBorder } from "@/components/react-bits"
+import { detectLocaleFromPath } from "@/lib/i18n-path"
 
 /** 检测当前是否在微信内置浏览器 */
 function getIsWechat(): boolean {
@@ -64,6 +66,11 @@ export function PurchaseSidebar({
   demoQrCode,
   isDev,
 }: PurchaseSidebarProps) {
+  const pathname = usePathname()
+  const locale = detectLocaleFromPath(pathname || "/")
+  const isEn = locale === "en"
+  const txt = (zh: string, en: string) => (isEn ? en : zh)
+
   // ===== 共享状态 =====
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
@@ -103,7 +110,7 @@ export function PurchaseSidebar({
 
   async function handleQuery() {
     if (!email.trim() || !email.includes("@")) {
-      setQueryError("请输入有效的邮箱地址")
+      setQueryError(txt("请输入有效的邮箱地址", "Please enter a valid email address"))
       return
     }
     setLoading(true)
@@ -114,12 +121,12 @@ export function PurchaseSidebar({
       )
       const data: CheckResult = await res.json()
       if (!res.ok) {
-        setQueryError((data as { error?: string }).error || "查询失败")
+        setQueryError((data as { error?: string }).error || txt("查询失败", "Query failed"))
         return
       }
 
       if (!data.purchased) {
-        setQueryError("该邮箱暂无赞助记录")
+        setQueryError(txt("该邮箱暂无赞助记录", "No sponsorship record found for this email"))
         return
       }
 
@@ -139,9 +146,9 @@ export function PurchaseSidebar({
       }
 
       // 兜底
-      setQueryError("未找到可用的交付资源")
+      setQueryError(txt("未找到可用的交付资源", "No available delivery resources found"))
     } catch {
-      setQueryError("网络错误，请重试")
+      setQueryError(txt("网络错误，请重试", "Network error, please try again"))
     } finally {
       setLoading(false)
     }
@@ -175,11 +182,11 @@ export function PurchaseSidebar({
         if (data.qr_data_url) {
           setWechatQrDataUrl(data.qr_data_url)
         } else {
-          setWechatCreateError(data.error || "获取支付二维码失败")
+          setWechatCreateError(data.error || txt("获取支付二维码失败", "Failed to get payment QR code"))
         }
       })
       .catch(() => {
-        if (!cancelled) setWechatCreateError("网络错误，请重试")
+        if (!cancelled) setWechatCreateError(txt("网络错误，请重试", "Network error, please try again"))
       })
       .finally(() => {
         if (!cancelled) setWechatCreateLoading(false)
@@ -219,7 +226,7 @@ export function PurchaseSidebar({
 
   async function handleBuy() {
     if (!email.trim() || !email.includes("@")) {
-      setBuyError("请输入有效的邮箱地址")
+      setBuyError(txt("请输入有效的邮箱地址", "Please enter a valid email address"))
       return
     }
     setLoading(true)
@@ -231,7 +238,7 @@ export function PurchaseSidebar({
       )
       const checkData: CheckResult = await checkRes.json()
       if (!checkRes.ok) {
-        setBuyError((checkData as { error?: string }).error || "查询失败")
+        setBuyError((checkData as { error?: string }).error || txt("查询失败", "Query failed"))
         return
       }
 
@@ -265,7 +272,7 @@ export function PurchaseSidebar({
       })
       const orderData = await orderRes.json()
       if (!orderRes.ok) {
-        setBuyError(orderData.error || "创建订单失败")
+        setBuyError(orderData.error || txt("创建订单失败", "Failed to create order"))
         return
       }
       if (orderData.figmaUrl) setFigmaUrl(orderData.figmaUrl)
@@ -274,7 +281,7 @@ export function PurchaseSidebar({
       setWechatQrDataUrl(null)
       setWechatCreateError(null)
     } catch {
-      setBuyError("网络错误，请重试")
+      setBuyError(txt("网络错误，请重试", "Network error, please try again"))
     } finally {
       setLoading(false)
     }
@@ -300,7 +307,7 @@ export function PurchaseSidebar({
       })
       const data = await res.json()
       if (!res.ok) {
-        setBuyError(data.error || "创建订单失败")
+        setBuyError(data.error || txt("创建订单失败", "Failed to create order"))
         return
       }
       if (data.figmaUrl) setFigmaUrl(data.figmaUrl)
@@ -309,7 +316,7 @@ export function PurchaseSidebar({
       setWechatQrDataUrl(null)
       setWechatCreateError(null)
     } catch {
-      setBuyError("网络错误，请重试")
+      setBuyError(txt("网络错误，请重试", "Network error, please try again"))
     } finally {
       setLoading(false)
     }
@@ -328,13 +335,13 @@ export function PurchaseSidebar({
       })
       const data = await res.json()
       if (!res.ok) {
-        setBuyError(data.error || "模拟支付失败")
+        setBuyError(data.error || txt("模拟支付失败", "Simulation failed"))
         return
       }
       if (data.figmaUrl) setFigmaUrl(data.figmaUrl)
       if (data.deliveryUrl) setDeliveryUrl(data.deliveryUrl)
     } catch {
-      setBuyError("网络错误，请重试")
+      setBuyError(txt("网络错误，请重试", "Network error, please try again"))
     } finally {
       setLoading(false)
     }
@@ -387,10 +394,10 @@ export function PurchaseSidebar({
                 <div className="flex flex-col items-center gap-2 p-4 rounded-xl border border-border bg-accent/30">
                   <img
                     src={demoQrCode}
-                    alt="扫码体验"
+                    alt={txt("扫码体验", "Scan to preview")}
                     className="w-36 h-36 rounded-lg object-contain"
                   />
-                  <span className="text-xs text-muted-foreground">扫码体验</span>
+                  <span className="text-xs text-muted-foreground">{txt("扫码体验", "Scan to preview")}</span>
                 </div>
               )}
               {demoUrl && (
@@ -401,7 +408,7 @@ export function PurchaseSidebar({
                   className="w-full py-2.5 rounded-xl border border-border bg-accent/50 hover:bg-accent text-foreground font-medium text-sm flex items-center justify-center gap-2 transition-all"
                 >
                   <i className="ri-external-link-line" />
-                  在线体验
+                  {txt("在线体验", "Live Demo")}
                 </a>
               )}
             </div>
@@ -417,7 +424,7 @@ export function PurchaseSidebar({
                 {displayPrice}
               </span>
               {!isFree && (
-                <span className="text-sm text-muted-foreground">一次赞助，永久使用</span>
+                <span className="text-sm text-muted-foreground">{txt("一次赞助，永久使用", "One-time support, lifetime access")}</span>
               )}
             </div>
 
@@ -430,13 +437,13 @@ export function PurchaseSidebar({
                     className="w-full py-3 rounded-xl bg-foreground text-background font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2"
                   >
                     <i className="ri-figma-line" />
-                    在 Figma 中打开
+                    {txt("在 Figma 中打开", "Open in Figma")}
                   </button>
                 )}
                 {deliveryUrl && (
                   <div className="flex items-center gap-2 p-3 rounded-xl border border-green-500/30 bg-green-500/5">
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground mb-0.5">自定义链接</p>
+                      <p className="text-xs text-muted-foreground mb-0.5">{txt("自定义链接", "Custom link")}</p>
                       <p className="text-sm text-foreground truncate" title={deliveryUrl}>{deliveryUrl}</p>
                     </div>
                     <button
@@ -444,7 +451,7 @@ export function PurchaseSidebar({
                       className="shrink-0 px-3 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-all flex items-center gap-1"
                     >
                       <i className={copied ? "ri-check-line" : "ri-file-copy-line"} />
-                      {copied ? "已复制" : "复制"}
+                      {copied ? txt("已复制", "Copied") : txt("复制", "Copy")}
                     </button>
                   </div>
                 )}
@@ -463,10 +470,10 @@ export function PurchaseSidebar({
                     className="w-full py-3 rounded-xl bg-foreground text-background font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2"
                   >
                     <i className={copied ? "ri-check-line" : "ri-link"} />
-                    {copied ? "已复制，去电脑端打开吧" : "复制链接，电脑端赞助"}
+                    {copied ? txt("已复制，去电脑端打开吧", "Copied, open it on desktop") : txt("复制链接，电脑端赞助", "Copy link for desktop payment")}
                   </button>
                   <p className="text-xs text-muted-foreground text-center leading-relaxed">
-                    移动端暂不支持扫码支付，请在电脑浏览器中打开链接赞助
+                    {txt("移动端暂不支持扫码支付，请在电脑浏览器中打开链接赞助", "Mobile does not support QR payment yet. Please open this page in a desktop browser.")}
                   </p>
                 </div>
               ) : (
@@ -475,13 +482,13 @@ export function PurchaseSidebar({
                   className="w-full py-3 rounded-xl bg-foreground text-background font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2"
                 >
                   <i className={isFree ? "ri-gift-line" : "ri-heart-line"} />
-                  {isFree ? "开源获取" : "立即赞助"}
+                  {isFree ? txt("开源获取", "Get open-source version") : txt("立即赞助", "Support now")}
                 </button>
               )
             ) : (
               <div className="w-full py-3 rounded-xl bg-muted text-muted-foreground font-medium flex items-center justify-center gap-2 text-sm">
                 <i className="ri-eye-line" />
-                仅供预览
+                {txt("仅供预览", "Preview only")}
               </div>
             )}
 
@@ -492,7 +499,7 @@ export function PurchaseSidebar({
                   <div key={i} className="space-y-1.5">
                     <p className="text-xs font-medium text-green-600 flex items-center gap-1">
                       <i className="ri-checkbox-circle-fill" />
-                      V{pv.version}（已购）
+                      V{pv.version}{txt("（已购）", " (Purchased)")}
                     </p>
                     <div className="flex flex-col gap-1.5">
                       {pv.figmaUrl && (
@@ -501,7 +508,7 @@ export function PurchaseSidebar({
                           className="w-full py-2 rounded-lg border border-border bg-accent/50 text-foreground text-sm font-medium hover:bg-accent transition-all flex items-center justify-center gap-2"
                         >
                           <i className="ri-figma-line" />
-                          在 Figma 中打开
+                          {txt("在 Figma 中打开", "Open in Figma")}
                         </button>
                       )}
                       {pv.deliveryUrl && (
@@ -528,7 +535,7 @@ export function PurchaseSidebar({
                 className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1"
               >
                 <i className="ri-search-line text-xs" />
-                已赞助？查询赞助记录
+                {txt("已赞助？查询赞助记录", "Already supported? Check record")}
               </button>
             )}
           </div>
@@ -537,18 +544,18 @@ export function PurchaseSidebar({
           <div className="mt-6 pt-6 border-t border-border space-y-3 text-sm">
             {currentVersion && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground flex items-center gap-1">
-                  <i className="ri-price-tag-3-line" /> 版本
-                </span>
+              <span className="text-muted-foreground flex items-center gap-1">
+                  <i className="ri-price-tag-3-line" /> {txt("版本", "Version")}
+              </span>
                 <span className="text-foreground/70">V{currentVersion}</span>
               </div>
             )}
             <div className="flex justify-between">
               <span className="text-muted-foreground flex items-center gap-1">
-                <i className="ri-calendar-line" /> 更新时间
+                <i className="ri-calendar-line" /> {txt("更新时间", "Updated")}
               </span>
               <span className="text-foreground/70">
-                {updatedAt ? new Date(updatedAt).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }) : "-"}
+                {updatedAt ? new Date(updatedAt).toLocaleDateString(isEn ? "en-US" : "zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }) : "-"}
               </span>
             </div>
           </div>
@@ -569,7 +576,7 @@ export function PurchaseSidebar({
             >
               <div className="p-6 space-y-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-foreground">查询赞助记录</h2>
+                  <h2 className="text-lg font-semibold text-foreground">{txt("查询赞助记录", "Check support record")}</h2>
                   <button
                     onClick={() => setQueryOpen(false)}
                     className="text-muted-foreground hover:text-foreground transition-colors"
@@ -581,7 +588,7 @@ export function PurchaseSidebar({
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">
-                    赞助邮箱
+                    {txt("赞助邮箱", "Support email")}
                   </label>
                   <input
                     type="email"
@@ -593,7 +600,7 @@ export function PurchaseSidebar({
                     disabled={loading}
                   />
                   <p className="text-xs text-muted-foreground/70 leading-relaxed">
-                    请输入赞助时使用的邮箱，用于查询已获取的资源记录。
+                    {txt("请输入赞助时使用的邮箱，用于查询已获取的资源记录。", "Enter the email used for payment to retrieve your resources.")}
                   </p>
                 </div>
 
@@ -611,12 +618,12 @@ export function PurchaseSidebar({
                   {loading ? (
                     <>
                       <i className="ri-loader-4-line animate-spin" />
-                      查询中…
+                      {txt("查询中…", "Checking…")}
                     </>
                   ) : (
                     <>
                       <i className="ri-search-line" />
-                      查询
+                      {txt("查询", "Check")}
                     </>
                   )}
                 </button>
@@ -641,7 +648,7 @@ export function PurchaseSidebar({
               <div className="p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-foreground">
-                    {hasAnyUrl ? "获取资源" : orderNo ? "等待支付" : checkResult?.purchased ? "版本升级" : isFree ? "开源获取" : "赞助作品"}
+                    {hasAnyUrl ? txt("获取资源", "Get resources") : orderNo ? txt("等待支付", "Waiting for payment") : checkResult?.purchased ? txt("版本升级", "Upgrade version") : isFree ? txt("开源获取", "Get open-source version") : txt("赞助作品", "Support this work")}
                   </h2>
                   <button
                     onClick={() => { if (!loading) setBuyOpen(false) }}
@@ -660,11 +667,11 @@ export function PurchaseSidebar({
                         <i className={isFree ? "ri-gift-fill text-green-500 text-3xl" : "ri-heart-3-fill text-green-500 text-3xl"} />
                       </div>
                       <h3 className="text-lg font-semibold text-foreground mb-1">
-                        {isFree ? "获取成功" : "感谢您的支持"}
+                        {isFree ? txt("获取成功", "Success") : txt("感谢您的支持", "Thanks for your support")}
                       </h3>
                       {!isFree && orderNo && (
                         <p className="text-sm text-muted-foreground">
-                          赞助编号: {orderNo}
+                          {txt("赞助编号", "Order No.")}: {orderNo}
                         </p>
                       )}
                     </div>
@@ -676,14 +683,14 @@ export function PurchaseSidebar({
                         className="w-full py-3 rounded-xl bg-foreground text-background font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2"
                       >
                         <i className="ri-figma-line" />
-                        在 Figma 中打开
+                        {txt("在 Figma 中打开", "Open in Figma")}
                       </button>
                     )}
 
                     {/* 自定义链接复制 */}
                     {deliveryUrl && (
                       <div className="rounded-xl border border-border bg-accent/30 p-3 space-y-2">
-                        <p className="text-xs text-muted-foreground">自定义链接</p>
+                        <p className="text-xs text-muted-foreground">{txt("自定义链接", "Custom link")}</p>
                         <div className="flex items-center gap-2">
                           <p className="flex-1 min-w-0 text-sm text-foreground break-all line-clamp-2" title={deliveryUrl}>{deliveryUrl}</p>
                           <button
@@ -691,7 +698,7 @@ export function PurchaseSidebar({
                             className="shrink-0 px-3 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-all flex items-center gap-1.5"
                           >
                             <i className={copied ? "ri-check-line" : "ri-file-copy-line"} />
-                            {copied ? "已复制" : "复制链接"}
+                            {copied ? txt("已复制", "Copied") : txt("复制链接", "Copy link")}
                           </button>
                         </div>
                       </div>
@@ -700,10 +707,10 @@ export function PurchaseSidebar({
                     {!isFree && (
                       <>
                         <p className="text-xs text-muted-foreground text-center">
-                          请妥善保管您的邮箱，后续可通过邮箱查询赞助记录。
+                          {txt("请妥善保管您的邮箱，后续可通过邮箱查询赞助记录。", "Keep your email safe. You can use it to retrieve your resources later.")}
                         </p>
                         <p className="text-xs text-muted-foreground text-center">
-                          如需返还或有其他疑问，请联系范米花儿。
+                          {txt("如需返还或有其他疑问，请联系范米花儿。", "For refunds or other questions, please contact Fan Studio.")}
                         </p>
                       </>
                     )}
@@ -714,8 +721,8 @@ export function PurchaseSidebar({
                     <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
                       <i className="ri-time-line text-amber-500 text-xl" />
                       <div>
-                        <p className="text-sm font-medium text-foreground">等待支付</p>
-                        <p className="text-xs text-muted-foreground">赞助编号: {orderNo}</p>
+                        <p className="text-sm font-medium text-foreground">{txt("等待支付", "Waiting for payment")}</p>
+                        <p className="text-xs text-muted-foreground">{txt("赞助编号", "Order No.")}: {orderNo}</p>
                       </div>
                     </div>
 
@@ -726,10 +733,10 @@ export function PurchaseSidebar({
                           <i className="ri-computer-line text-amber-500 text-3xl" />
                         </div>
                         <div className="text-center space-y-1.5">
-                          <p className="text-sm font-medium text-foreground">请在电脑端完成支付</p>
+                          <p className="text-sm font-medium text-foreground">{txt("请在电脑端完成支付", "Please complete payment on desktop")}</p>
                           <p className="text-xs text-muted-foreground leading-relaxed">
-                            微信内暂不支持扫码支付，请复制下方链接<br />
-                            在电脑浏览器中打开，使用微信扫码付款
+                            {txt("微信内暂不支持扫码支付，请复制下方链接", "In WeChat browser, QR payment is not supported yet. Copy the link below")}<br />
+                            {txt("在电脑浏览器中打开，使用微信扫码付款", "Open it in a desktop browser and pay via WeChat QR")}
                           </p>
                         </div>
                         <button
@@ -744,46 +751,46 @@ export function PurchaseSidebar({
                             text-foreground font-medium text-sm flex items-center justify-center gap-2 transition-all"
                         >
                           <i className={copied ? "ri-check-line text-green-500" : "ri-link"} />
-                          {copied ? "已复制，去电脑端打开吧" : "复制页面链接"}
+                          {copied ? txt("已复制，去电脑端打开吧", "Copied, open it on desktop") : txt("复制页面链接", "Copy page link")}
                         </button>
                         <p className="text-xs text-muted-foreground text-center">
-                          支付成功后将发邮件到您的邮箱<br />也可通过「查询赞助记录」获取资源
+                          {txt("支付成功后将发邮件到您的邮箱", "After payment, we will email your resources")}<br />{txt("也可通过「查询赞助记录」获取资源", "or retrieve via \"Check support record\"")}
                         </p>
                       </div>
                     ) : wechatCreateLoading ? (
                       <div className="flex flex-col items-center justify-center py-8 gap-3">
                         <i className="ri-loader-4-line animate-spin text-2xl text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">正在生成支付二维码…</p>
+                        <p className="text-sm text-muted-foreground">{txt("正在生成支付二维码…", "Generating payment QR code…")}</p>
                       </div>
                     ) : wechatQrDataUrl ? (
                       <div className="flex flex-col items-center gap-3 py-2">
                         <img
                           src={wechatQrDataUrl}
-                          alt="微信扫码支付"
+                          alt={txt("微信扫码支付", "WeChat QR Payment")}
                           className="w-[260px] h-[260px] rounded-xl border border-border bg-white p-2"
                         />
-                        <p className="text-sm font-medium text-foreground">请使用微信扫码支付</p>
+                        <p className="text-sm font-medium text-foreground">{txt("请使用微信扫码支付", "Please scan with WeChat to pay")}</p>
                         <p className="text-xs text-muted-foreground">
-                          支付成功后将发邮件到您的邮箱，也可通过「查询赞助记录」获取资源
+                          {txt("支付成功后将发邮件到您的邮箱，也可通过「查询赞助记录」获取资源", "After payment, we will email your resources. You can also retrieve via \"Check support record\".")}
                         </p>
                       </div>
                     ) : (
                       <>
                         <p className="text-sm text-muted-foreground text-center">
-                          {wechatCreateError ?? "微信支付功能即将上线，敬请期待"}
+                          {wechatCreateError ?? txt("微信支付功能即将上线，敬请期待", "WeChat Pay is coming soon.")}
                         </p>
                         {/* 测试按钮：未配置微信或开发环境可用 */}
                         <div className="border-t border-dashed border-border pt-4">
-                          <p className="text-xs text-muted-foreground/60 text-center mb-2">— 测试模式 —</p>
+                          <p className="text-xs text-muted-foreground/60 text-center mb-2">{txt("— 测试模式 —", "— Test Mode —")}</p>
                           <button
                             onClick={handleSimulatePay}
                             disabled={loading}
                             className="w-full py-3 rounded-xl bg-amber-500 text-white font-medium hover:bg-amber-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                           >
                             {loading ? (
-                              <><i className="ri-loader-4-line animate-spin" /> 处理中…</>
+                              <><i className="ri-loader-4-line animate-spin" /> {txt("处理中…", "Processing…")}</>
                             ) : (
-                              <><i className="ri-test-tube-line" /> 模拟支付成功</>
+                              <><i className="ri-test-tube-line" /> {txt("模拟支付成功", "Simulate payment success")}</>
                             )}
                           </button>
                         </div>
@@ -802,26 +809,26 @@ export function PurchaseSidebar({
                     <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
                       <i className="ri-arrow-up-circle-fill text-amber-500 text-xl" />
                       <div>
-                        <p className="text-sm font-medium text-foreground">发现新版本可升级</p>
+                        <p className="text-sm font-medium text-foreground">{txt("发现新版本可升级", "A newer version is available")}</p>
                         <p className="text-xs text-muted-foreground">
-                          {checkResult.paidVersion && `已购: V${checkResult.paidVersion} · `}
-                          已支付: ¥{checkResult.paidAmount ?? 0}
+                          {checkResult.paidVersion && `${txt("已购", "Purchased")}: V${checkResult.paidVersion} · `}
+                          {txt("已支付", "Paid")}: ¥{checkResult.paidAmount ?? 0}
                         </p>
                       </div>
                     </div>
                     <div className="p-4 rounded-xl bg-accent/50 border border-border/50 space-y-3">
                       <span className="text-sm font-medium text-foreground">
-                        升级到 V{checkResult.currentVersion}
+                        {txt("升级到", "Upgrade to")} V{checkResult.currentVersion}
                       </span>
                       <div className="flex items-baseline gap-2">
                         {(checkResult.upgradePrice ?? 0) > 0 ? (
                           <>
                             <span className="text-2xl font-bold text-foreground">¥{checkResult.upgradePrice}</span>
                             <span className="text-sm text-muted-foreground line-through">¥{checkResult.currentPrice}</span>
-                            <span className="text-xs bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full">补差价</span>
+                            <span className="text-xs bg-green-500/10 text-green-600 px-2 py-0.5 rounded-full">{txt("补差价", "Pay difference")}</span>
                           </>
                         ) : (
-                          <span className="text-2xl font-bold text-green-600">开源升级</span>
+                          <span className="text-2xl font-bold text-green-600">{txt("开源升级", "Free upgrade")}</span>
                         )}
                       </div>
                     </div>
@@ -834,11 +841,11 @@ export function PurchaseSidebar({
                       className="w-full py-3 rounded-xl bg-foreground text-background font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {loading ? (
-                        <><i className="ri-loader-4-line animate-spin" /> 处理中…</>
+                        <><i className="ri-loader-4-line animate-spin" /> {txt("处理中…", "Processing…")}</>
                       ) : (checkResult.upgradePrice ?? 0) > 0 ? (
-                        <><i className="ri-arrow-up-circle-line" /> 升级 ¥{checkResult.upgradePrice}</>
+                        <><i className="ri-arrow-up-circle-line" /> {txt("升级", "Upgrade")} ¥{checkResult.upgradePrice}</>
                       ) : (
-                        <><i className="ri-gift-line" /> 开源升级</>
+                        <><i className="ri-gift-line" /> {txt("开源升级", "Free upgrade")}</>
                       )}
                     </button>
                   </div>
@@ -857,7 +864,7 @@ export function PurchaseSidebar({
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-foreground">
-                        邮箱地址 <span className="text-destructive">*</span>
+                        {txt("邮箱地址", "Email")} <span className="text-destructive">*</span>
                       </label>
                       <input
                         type="email"
@@ -870,15 +877,15 @@ export function PurchaseSidebar({
                       />
                       {isFree ? (
                         <p className="text-xs text-muted-foreground/70 leading-relaxed">
-                          邮件将作为您获取资源的凭证，请填写常用邮箱。
+                          {txt("邮件将作为您获取资源的凭证，请填写常用邮箱。", "Email will be used to retrieve your resources. Please use a frequently used address.")}
                         </p>
                       ) : (
                         <>
                           <p className="text-xs text-muted-foreground/70 leading-relaxed">
-                            本站为个人网站，不提供账户系统与在线查询。邮件将作为您获取资源的唯一凭证，请务必填写常用邮箱。
+                            {txt("本站为个人网站，不提供账户系统与在线查询。邮件将作为您获取资源的唯一凭证，请务必填写常用邮箱。", "This is a personal site without an account system. Email is your only credential for retrieving resources.")}
                           </p>
                           <p className="text-xs text-muted-foreground/70 leading-relaxed">
-                            赞助后不支持自助返还，如需返还或有其他疑问，请联系范米花儿。
+                            {txt("赞助后不支持自助返还，如需返还或有其他疑问，请联系范米花儿。", "Self-service refunds are not supported. For refunds or questions, please contact Fan Studio.")}
                           </p>
                         </>
                       )}
@@ -892,11 +899,11 @@ export function PurchaseSidebar({
                       className="w-full py-3 rounded-xl bg-foreground text-background font-medium hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {loading ? (
-                        <><i className="ri-loader-4-line animate-spin" /> 处理中…</>
+                        <><i className="ri-loader-4-line animate-spin" /> {txt("处理中…", "Processing…")}</>
                       ) : isFree ? (
-                        <><i className="ri-gift-line" /> 开源获取</>
+                        <><i className="ri-gift-line" /> {txt("开源获取", "Get open-source version")}</>
                       ) : (
-                        <><i className="ri-heart-line" /> 确认赞助 ¥{displayPrice}</>
+                        <><i className="ri-heart-line" /> {txt("确认赞助", "Confirm support")} ¥{displayPrice}</>
                       )}
                     </button>
                   </div>

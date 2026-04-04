@@ -2,14 +2,17 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState, useEffect } from "react"
 import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
 import { Magnet } from "@/components/react-bits"
 import { useNavConfig } from "@/hooks/useNavConfig"
+import { useMounted } from "@/hooks/useMounted"
 import { defaultNav } from "@/lib/nav-config"
 import { getBeijingVolShort } from "@/lib/date-util"
+import { detectLocaleFromPath, withLocalePath } from "@/lib/i18n-path"
+import { oppositeLocale } from "@/lib/i18n"
+import { resolveFrontendSectionVisibility } from "@/lib/page-copy"
 
 const navKeys = [
   { key: "worksDesign" as const, href: "/works/design", icon: "ri-palette-line" },
@@ -22,12 +25,22 @@ const navKeys = [
 export function MagazineSidebar({ width = 200 }: { width?: number }) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
-  const { nav } = useNavConfig()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-  const themeDarkLabel = defaultNav.themeDarkLabel ?? "暗色模式"
-  const themeLightLabel = defaultNav.themeLightLabel ?? "亮色模式"
+  const { nav, pageCopy } = useNavConfig()
+  const mounted = useMounted()
+  const locale = detectLocaleFromPath(pathname || "/")
+  const sectionVisibility = resolveFrontendSectionVisibility(pageCopy)
+  const visibleNavItems = navKeys.filter((item) => {
+    if (item.key === "worksDesign") return sectionVisibility.worksDesign
+    if (item.key === "worksDev") return sectionVisibility.worksDev
+    if (item.key === "blog") return sectionVisibility.blog
+    if (item.key === "tutorials") return sectionVisibility.tutorials
+    return true
+  })
+  const themeDarkLabel = locale === "en" ? "Dark Mode" : (defaultNav.themeDarkLabel ?? "暗色模式")
+  const themeLightLabel = locale === "en" ? "Light Mode" : (defaultNav.themeLightLabel ?? "亮色模式")
   const themeLabel = mounted ? (theme === "dark" ? themeLightLabel : themeDarkLabel) : themeDarkLabel
+  const nextLocale = oppositeLocale(locale)
+  const switchLabel = nextLocale === "en" ? "English" : "中文"
 
   const logoText = nav.logoText ?? defaultNav.logoText ?? ""
   const parts = logoText.trim().split(".")
@@ -40,7 +53,7 @@ export function MagazineSidebar({ width = 200 }: { width?: number }) {
       style={{ width, transition: "width 200ms" }}
     >
       <div>
-        <Link href="/" className="group block mb-10">
+        <Link href={withLocalePath("/", locale)} className="group block mb-10">
           <Magnet strength={0.15}>
             <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
               {logoMain}
@@ -54,16 +67,16 @@ export function MagazineSidebar({ width = 200 }: { width?: number }) {
         </Link>
 
         <nav className="space-y-1">
-          {navKeys.map((item) => {
+          {visibleNavItems.map((item) => {
             const label = nav[item.key] ?? defaultNav[item.key] ?? item.key
             const isActive =
-              pathname === item.href ||
-              (item.href !== "/" && pathname.startsWith(item.href))
+              pathname === withLocalePath(item.href, locale) ||
+              (item.href !== "/" && pathname.startsWith(withLocalePath(item.href, locale)))
 
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={withLocalePath(item.href, locale)}
                 className={cn(
                   "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 relative",
                   isActive
@@ -98,6 +111,20 @@ export function MagazineSidebar({ width = 200 }: { width?: number }) {
           <i className="ri-moon-line hidden dark:inline text-base" />
           <span className="font-medium tracking-wide">{themeLabel}</span>
         </button>
+        <Link
+          href={withLocalePath(pathname || "/", nextLocale)}
+          onClick={async () => {
+            await fetch("/api/locale", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ locale: nextLocale }),
+            }).catch(() => {})
+          }}
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all duration-200 w-full"
+        >
+          <i className="ri-translate-2 text-base" />
+          <span className="font-medium tracking-wide">{switchLabel}</span>
+        </Link>
 
         <div className="pt-4 border-t border-border/50">
           <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/70 font-mono">

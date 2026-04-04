@@ -30,6 +30,7 @@ interface OrderEmailParams {
   siteName: string
   workTitle: string
   orderNo: string
+  locale?: "zh" | "en"
   isFree: boolean
   amount?: number
   figmaUrl?: string | null
@@ -64,6 +65,7 @@ export async function sendOrderEmail(params: OrderEmailParams) {
     siteName,
     workTitle,
     orderNo,
+    locale = "zh",
     isFree,
     amount,
     figmaUrl,
@@ -72,9 +74,9 @@ export async function sendOrderEmail(params: OrderEmailParams) {
     wechat,
   } = params
 
-  const subject = isFree
-    ? `${workTitle} - 资源已就绪`
-    : `${workTitle} - 赞助成功`
+  const subject = locale === "en"
+    ? (isFree ? `${workTitle} - Resource Ready` : `${workTitle} - Payment Success`)
+    : (isFree ? `${workTitle} - 资源已就绪` : `${workTitle} - 赞助成功`)
 
   const deliverySection = buildDeliverySection(figmaUrl, deliveryUrl)
   const versionText = currentVersion ? ` V${currentVersion}` : ""

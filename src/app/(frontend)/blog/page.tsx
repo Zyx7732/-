@@ -2,13 +2,17 @@
 /** 博客列表页：文章卡片网格，支持分类/标签筛选，文案来自设置。 */
 import { CardDescriptionHtml } from "@/components/frontend/CardDescriptionHtml"
 import { defaultNav } from "@/lib/nav-config"
-import { defaultPageCopy, defaultSiteName } from "@/lib/page-copy"
+import { defaultPageCopy, defaultSiteName, resolveFrontendSectionVisibility } from "@/lib/page-copy"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { FadeContent, GlowBorder } from "@/components/react-bits"
 import { CoverImage } from "@/components/frontend/CoverImage"
 import { useNavConfig } from "@/hooks/useNavConfig"
 import { coverRatioToCss } from "@/lib/cover-ratio"
+import { getDictionary } from "@/locales"
+import { t } from "@/lib/i18n"
+import { withLocalePath } from "@/lib/i18n-path"
 
 type Post = {
   id: string
@@ -22,25 +26,41 @@ type Post = {
 }
 
 export default function BlogPage() {
-  const { nav, pageCopy, siteName } = useNavConfig()
+  const router = useRouter()
+  const { nav, pageCopy, siteName, locale } = useNavConfig()
+  const dict = getDictionary(locale)
+  const sectionVisibility = resolveFrontendSectionVisibility(pageCopy)
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeCategory, setActiveCategory] = useState("全部")
+  const allCategoryLabel = t(dict, "frontend.category_all", "全部")
+  const [activeCategory, setActiveCategory] = useState(allCategoryLabel)
   const sectionLabel = nav.blog ?? defaultNav.blog ?? ""
   const sectionDesc = pageCopy.blogDesc ?? defaultPageCopy.blogDesc ?? ""
   const moduleCoverRatio = pageCopy.coverRatioBlog
 
   useEffect(() => {
-    fetch("/api/posts")
+    fetch(`/api/posts?locale=${locale}`)
       .then((r) => r.json())
       .then((data) => setPosts(Array.isArray(data) ? data : []))
       .catch(() => setPosts([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [locale])
 
-  const categories = ["全部", ...Array.from(new Set(posts.map((p) => p.category?.name).filter(Boolean)))] as string[]
+  useEffect(() => {
+    if (!sectionVisibility.blog) {
+      router.replace(withLocalePath("/", locale))
+    }
+  }, [locale, router, sectionVisibility.blog])
+
+  useEffect(() => {
+    setActiveCategory(allCategoryLabel)
+  }, [allCategoryLabel])
+
+  if (!sectionVisibility.blog) return null
+
+  const categories = [allCategoryLabel, ...Array.from(new Set(posts.map((p) => p.category?.name).filter(Boolean)))] as string[]
   const filteredPosts =
-    activeCategory === "全部"
+    activeCategory === allCategoryLabel
       ? posts
       : posts.filter((p) => p.category?.name === activeCategory)
 
@@ -113,7 +133,7 @@ export default function BlogPage() {
           ))}
         </div>
       ) : filteredPosts.length === 0 ? (
-        <div className="text-muted-foreground py-12">暂无{sectionLabel}</div>
+        <div className="text-muted-foreground py-12">{t(dict, "common.empty_prefix", "暂无")}{sectionLabel}</div>
       ) : (
         <div className="columns-2 md:columns-3 lg:columns-4 gap-5">
           {filteredPosts.map((post, index) => (

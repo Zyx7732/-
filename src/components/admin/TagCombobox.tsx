@@ -14,6 +14,7 @@ import {
   CommandItem,
 } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 type TagItem = { id: string; name: string }
 
@@ -30,9 +31,12 @@ interface TagComboboxProps {
 export function TagCombobox({
   value,
   onChange,
-  placeholder = "选择标签",
+  placeholder,
   className,
 }: TagComboboxProps) {
+  const { locale } = useAdminUiLocale()
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
+  const placeholderText = placeholder ?? t("选择标签", "Select tags")
   const [open, setOpen] = useState(false)
   const [tags, setTags] = useState<TagItem[]>([])
   const [search, setSearch] = useState("")
@@ -76,16 +80,16 @@ export function TagCombobox({
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error || "创建标签失败")
+        toast.error(data.error || t("创建标签失败", "Failed to create tag"))
         return
       }
       // 追加到列表并选中
       setTags((prev) => [...prev, data])
       onChange([...value, data.id])
       setSearch("")
-      toast.success(`标签「${name}」已创建`)
+      toast.success(locale === "en" ? `Tag "${name}" created` : `标签「${name}」已创建`)
     } catch {
-      toast.error("网络错误，请重试")
+      toast.error(t("网络错误，请重试", "Network error, please try again"))
     } finally {
       setCreating(false)
     }
@@ -111,8 +115,8 @@ export function TagCombobox({
           >
             <span className="truncate">
               {value.length > 0
-                ? `已选 ${value.length} 个标签`
-                : placeholder}
+                ? t(`已选 ${value.length} 个标签`, `${value.length} tags selected`)
+                : placeholderText}
             </span>
             <i className="ri-expand-up-down-line ml-2 shrink-0 text-muted-foreground text-sm" />
           </Button>
@@ -120,7 +124,7 @@ export function TagCombobox({
         <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
           <Command shouldFilter={true}>
             <CommandInput
-              placeholder="搜索或创建标签…"
+              placeholder={t("搜索或创建标签…", "Search or create tags…")}
               value={search}
               onValueChange={setSearch}
             />
@@ -135,11 +139,11 @@ export function TagCombobox({
                   >
                     <i className="ri-add-line text-primary shrink-0" />
                     <span>
-                      {creating ? "创建中…" : <>创建「<span className="font-medium">{search.trim()}</span>」</>}
+                      {creating ? t("创建中…", "Creating…") : <>{t("创建「", "Create \"")}<span className="font-medium">{search.trim()}</span>{t("」", "\"")}</>}
                     </span>
                   </button>
                 ) : (
-                  <span className="text-muted-foreground">暂无标签</span>
+                  <span className="text-muted-foreground">{t("暂无标签", "No tags")}</span>
                 )}
               </CommandEmpty>
               <CommandGroup>
@@ -166,7 +170,7 @@ export function TagCombobox({
                     className="text-primary"
                   >
                     <i className="ri-add-line shrink-0" />
-                    {creating ? "创建中…" : <>创建「{search.trim()}」</>}
+                    {creating ? t("创建中…", "Creating…") : <>{t("创建「", "Create \"")}{search.trim()}{t("」", "\"")}</>}
                   </CommandItem>
                 )}
               </CommandGroup>

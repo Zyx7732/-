@@ -3,8 +3,12 @@
 import { useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 export default function NewWorkPage() {
+  const { locale } = useAdminUiLocale()
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
+  const isEn = locale === "en"
   const router = useRouter()
   const searchParams = useSearchParams()
   const creating = useRef(false)
@@ -20,7 +24,7 @@ export default function NewWorkPage() {
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({
-        title: "无标题作品",
+        title: isEn ? "Untitled Work" : "无标题作品",
         slug: `draft-${Date.now()}`,
         workType,
       }),
@@ -30,22 +34,22 @@ export default function NewWorkPage() {
         if (data?.id) {
           router.replace(`/admin/works/${data.id}/edit`)
         } else {
-          toast.error(data?.error || "创建失败")
+          toast.error(data?.error || (isEn ? "Create failed" : "创建失败"))
           const fallback = workType === "DEVELOPMENT" ? "/admin/works/development" : "/admin/works/design"
           router.replace(fallback)
         }
       })
       .catch(() => {
-        toast.error("网络错误")
+        toast.error(isEn ? "Network error" : "网络错误")
         router.replace("/admin/works/design")
       })
-  }, [router, searchParams])
+  }, [router, searchParams, isEn])
 
   return (
     <div className="flex items-center justify-center py-20">
       <div className="flex items-center gap-3 text-muted-foreground">
         <i className="ri-loader-4-line animate-spin text-lg" />
-        <span className="text-sm">正在创建作品…</span>
+        <span className="text-sm">{t("正在创建作品…", "Creating work…")}</span>
       </div>
     </div>
   )

@@ -1,14 +1,18 @@
 "use client"
 /** 设计/开发作品列表组件：按 type 拉取作品并展示卡片网格，文案来自 nav/pageCopy。 */
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { FadeContent, GlowBorder } from "@/components/react-bits"
 import { CoverImage } from "@/components/frontend/CoverImage"
 import { CardDescriptionHtml } from "@/components/frontend/CardDescriptionHtml"
 import { defaultNav } from "@/lib/nav-config"
-import { defaultPageCopy, defaultSiteName } from "@/lib/page-copy"
+import { defaultPageCopy, defaultSiteName, resolveFrontendSectionVisibility } from "@/lib/page-copy"
 import { useNavConfig } from "@/hooks/useNavConfig"
 import { coverRatioToCss } from "@/lib/cover-ratio"
+import { getDictionary } from "@/locales"
+import { t } from "@/lib/i18n"
+import { withLocalePath } from "@/lib/i18n-path"
 
 type Work = {
   id: string
@@ -34,7 +38,11 @@ export function WorksListByType({
   navKey,
   descKey,
 }: WorksListByTypeProps) {
-  const { nav, pageCopy, siteName } = useNavConfig()
+  const router = useRouter()
+  const { nav, pageCopy, siteName, locale } = useNavConfig()
+  const dict = getDictionary(locale)
+  const sectionVisibility = resolveFrontendSectionVisibility(pageCopy)
+  const isVisible = type === "design" ? sectionVisibility.worksDesign : sectionVisibility.worksDev
   const sectionLabel = nav[navKey] ?? (type === "design" ? (defaultNav.worksDesign ?? "") : (defaultNav.worksDev ?? ""))
   const sectionDesc =
     pageCopy[descKey] ??
@@ -54,6 +62,14 @@ export function WorksListByType({
       .catch(() => setWorks([]))
       .finally(() => setLoading(false))
   }, [type])
+
+  useEffect(() => {
+    if (!isVisible) {
+      router.replace(withLocalePath("/", locale))
+    }
+  }, [isVisible, locale, router])
+
+  if (!isVisible) return null
 
   return (
     <div className="min-h-screen px-6 md:px-12 lg:px-16 py-12 pb-28 lg:pb-16">
@@ -92,7 +108,7 @@ export function WorksListByType({
           ))}
         </div>
       ) : works.length === 0 ? (
-        <div className="text-muted-foreground py-12">暂无{sectionLabel}</div>
+        <div className="text-muted-foreground py-12">{t(dict, "common.empty_prefix", "暂无")}{sectionLabel}</div>
       ) : (
         <div className="columns-2 md:columns-3 lg:columns-4 gap-5">
           {works.map((work, index) => (
@@ -106,7 +122,7 @@ export function WorksListByType({
                     <CoverImage src={work.coverImage} alt={work.title} fallbackIcon={fallbackIcon} />
                     {work.isFree && (
                       <span className="absolute top-2 left-2 z-10 text-xs font-medium px-2.5 py-1 rounded-md bg-emerald-500/90 text-white backdrop-blur-sm">
-                        开源
+                        {t(dict, "frontend.open_source", "开源")}
                       </span>
                     )}
                   </div>

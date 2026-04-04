@@ -9,7 +9,7 @@ const BlockNoteEditor = dynamic(
     ssr: false,
     loading: () => (
       <div className="rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground py-8">
-        加载编辑器中…
+        Loading editor…
       </div>
     ),
   },

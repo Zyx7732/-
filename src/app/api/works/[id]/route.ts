@@ -4,15 +4,24 @@ import { requireAdmin } from "@/lib/require-admin"
 import prisma from "@/lib/prisma"
 import { sanitizeWorkForPublic } from "@/lib/sanitize-work"
 import { normalizeCoverRatio } from "@/lib/cover-ratio"
+import { safeDeleteKnowledgeSource, safeSyncKnowledgeSource } from "@/lib/ai/knowledge-trigger"
+import { DEFAULT_LOCALE, fromPrismaLocale, isLocale, LOCALE_COOKIE_KEY, normalizeLocale } from "@/lib/i18n"
+import { buildWorkI18nInput, localizeWork } from "@/lib/localized-content"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth()
+  const localeParam = new URL(request.url).searchParams.get("locale")
+  const locale = isLocale(localeParam)
+    ? localeParam
+    : normalizeLocale(request.cookies.get(LOCALE_COOKIE_KEY)?.value ?? DEFAULT_LOCALE)
   const { id } = await params
+  const settings = await prisma.settings.findUnique({ where: { id: "settings" }, select: { defaultLocale: true } })
+  const fallbackLocale = fromPrismaLocale(settings?.defaultLocale)
   const work = await prisma.work.findUnique({
     where: { id },
     include: { category: true, tags: true },
@@ -29,9 +38,10 @@ export async function GET(
     price: work.price ? Number(work.price) : null,
     images: (work.images as string[]) || [],
   }
-  if (isAdminRole) return NextResponse.json(row)
+  const localized = localizeWork(row as unknown as Record<string, unknown>, locale, fallbackLocale)
+  if (isAdminRole) return NextResponse.json(localized)
   return NextResponse.json({
-    ...sanitizeWorkForPublic(row),
+    ...sanitizeWorkForPublic(localized),
     _deliveryRedacted: true,
   })
 }
@@ -65,6 +75,11 @@ export async function PUT(
     tagIds,
   } = body
 
+  const existing = await prisma.work.findUnique({ where: { id } })
+  if (!existing) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
   const work = await prisma.work.update({
     where: { id },
     data: {
@@ -92,9 +107,18 @@ export async function PUT(
       ...(tagIds != null && {
         tags: { set: (tagIds as string[]).map((tid: string) => ({ id: tid })) },
       }),
+      ...(buildWorkI18nInput({
+        ...existing,
+        ...body,
+      })),
     },
     include: { tags: true },
   })
+  if (work.status === "PUBLISHED") {
+    await safeSyncKnowledgeSource("WORK", work.id)
+  } else {
+    await safeDeleteKnowledgeSource("WORK", work.id)
+  }
   return NextResponse.json(work)
 }
 
@@ -113,5 +137,6 @@ export async function DELETE(
     )
   }
   await prisma.work.delete({ where: { id } })
+  await safeDeleteKnowledgeSource("WORK", id)
   return NextResponse.json({ ok: true })
 }

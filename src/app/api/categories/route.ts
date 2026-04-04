@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/require-admin"
 import prisma from "@/lib/prisma"
+import { DEFAULT_LOCALE, fromPrismaLocale, LOCALE_COOKIE_KEY, normalizeLocale } from "@/lib/i18n"
+import { localizeCategory } from "@/lib/localized-content"
 
 export const dynamic = "force-dynamic"
 
@@ -59,6 +61,11 @@ function getCategoryItems(c: CategoryWithRelations): { id: string; title: string
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const type = searchParams.get("type")
+  const locale = normalizeLocale(
+    searchParams.get("locale") ?? request.cookies.get(LOCALE_COOKIE_KEY)?.value ?? DEFAULT_LOCALE,
+  )
+  const settings = await prisma.settings.findUnique({ where: { id: "settings" }, select: { defaultLocale: true } })
+  const fallbackLocale = fromPrismaLocale(settings?.defaultLocale)
 
   // 构建过滤条件
   let where: Record<string, unknown> | undefined
@@ -78,14 +85,17 @@ export async function GET(request: NextRequest) {
   })
 
   return NextResponse.json(
-    list.map((c) => ({
-      id: c.id,
-      name: c.name,
-      slug: c.slug,
-      type: c.type,
-      count: getCategoryCount(c),
-      items: getCategoryItems(c),
-    })),
+    list.map((c) => {
+      const localized = localizeCategory(c as unknown as Record<string, unknown>, locale, fallbackLocale)
+      return {
+        id: c.id,
+        name: localized.name,
+        slug: localized.slug,
+        type: c.type,
+        count: getCategoryCount(c),
+        items: getCategoryItems(c),
+      }
+    }),
     { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } },
   )
 }
@@ -112,7 +122,13 @@ export async function POST(request: NextRequest) {
   }
 
   const category = await prisma.category.create({
-    data: { name: name.trim(), slug, type },
+    data: {
+      name: name.trim(),
+      slug,
+      nameI18n: { zh: name.trim(), en: null },
+      slugI18n: { zh: slug, en: null },
+      type,
+    },
   })
 
   return NextResponse.json({ ...category, count: 0 }, { status: 201 })

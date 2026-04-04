@@ -18,6 +18,7 @@ import { zh } from "@blocknote/core/locales"
 import type { MediaEntityType } from "@/lib/media-storage"
 import { Button } from "@/components/ui/button"
 import { StaticFormattingToolbar } from "./StaticFormattingToolbar"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 import "@blocknote/core/fonts/inter.css"
 import "@blocknote/shadcn/style.css"
@@ -79,11 +80,14 @@ function createUploadFile(entityType?: MediaEntityType, entityId?: string) {
 export function BlockNoteEditor({
   value,
   onChange,
-  placeholder = "开始写作…",
+  placeholder,
   minHeight = "640px",
   entityType,
   entityId,
 }: BlockNoteEditorProps) {
+  const { locale } = useAdminUiLocale()
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
+  const placeholderText = placeholder ?? t("开始写作…", "Start writing…")
   const { resolvedTheme } = useTheme()
   const editorTheme = resolvedTheme === "dark" ? "dark" : "light"
 
@@ -96,10 +100,10 @@ export function BlockNoteEditor({
       ...zh,
       placeholders: {
         ...zh.placeholders,
-        default: placeholder,
+        default: placeholderText,
       },
     }),
-    [placeholder],
+    [placeholderText],
   )
   const [zoom, setZoom] = useState(1)
   const [fullscreen, setFullscreen] = useState(false)
@@ -145,14 +149,14 @@ export function BlockNoteEditor({
     >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-muted/20 px-3 py-2 shrink-0">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>缩放</span>
+          <span>{t("缩放", "Zoom")}</span>
           <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setZoom((prev) => Math.max(minZoom, +(prev - zoomStep).toFixed(2)))}
-              aria-label="缩小编辑器"
+              aria-label={t("缩小编辑器", "Zoom out editor")}
             >
               -
             </Button>
@@ -164,14 +168,14 @@ export function BlockNoteEditor({
               value={zoom}
               onChange={(event) => setZoom(Number(event.target.value))}
               className="h-2 w-28 accent-foreground"
-              aria-label="调整编辑器缩放比例"
+              aria-label={t("调整编辑器缩放比例", "Adjust editor zoom")}
             />
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setZoom((prev) => Math.min(maxZoom, +(prev + zoomStep).toFixed(2)))}
-              aria-label="放大编辑器"
+              aria-label={t("放大编辑器", "Zoom in editor")}
             >
               +
             </Button>
@@ -185,7 +189,7 @@ export function BlockNoteEditor({
             size="sm"
             onClick={() => setZoom(1)}
           >
-            重置
+            {t("重置", "Reset")}
           </Button>
           <Button
             type="button"
@@ -193,7 +197,7 @@ export function BlockNoteEditor({
             size="sm"
             onClick={() => setFullscreen((prev) => !prev)}
           >
-            {fullscreen ? "退出全屏" : "全屏编辑"}
+            {fullscreen ? t("退出全屏", "Exit Fullscreen") : t("全屏编辑", "Fullscreen")}
           </Button>
         </div>
       </div>

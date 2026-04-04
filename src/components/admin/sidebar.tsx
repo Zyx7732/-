@@ -2,40 +2,37 @@
 /** 后台侧栏：导航分组、主题切换、站点名、收起态；需包在 ThemeProvider 内。 */
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState, useEffect } from "react"
 import { useTheme } from "next-themes"
+import { useMounted } from "@/hooks/useMounted"
 import { defaultNav } from "@/lib/nav-config"
 import { defaultSiteName } from "@/lib/page-copy"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { signOut } from "next-auth/react"
+import { getDictionary } from "@/locales"
+import { t } from "@/lib/i18n"
 
-const navGroups = [
-  {
-    label: "概览",
-    items: [
-      { name: "仪表盘", href: "/admin", icon: "ri-dashboard-line" },
-    ],
-  },
-  {
-    label: "内容管理",
-    items: [
-      { name: "文章管理", href: "/admin/posts", icon: "ri-article-line" },
-      { name: "设计作品", href: "/admin/works/design", icon: "ri-palette-line" },
-      { name: "开发作品", href: "/admin/works/development", icon: "ri-code-s-slash-line" },
-      { name: "视频教程", href: "/admin/tutorials", icon: "ri-video-line" },
-    ],
-  },
-  {
-    label: "系统",
-    items: [
-      { name: "订单管理", href: "/admin/orders", icon: "ri-shopping-cart-line" },
-      { name: "分类标签", href: "/admin/categories", icon: "ri-price-tag-3-line" },
-      { name: "网站设置", href: "/admin/settings", icon: "ri-settings-3-line" },
-    ],
-  },
-]
+const ADMIN_LABELS: Record<string, { zh: string; en: string }> = {
+  overview: { zh: "概览", en: "Overview" },
+  content: { zh: "内容管理", en: "Content" },
+  system: { zh: "系统", en: "System" },
+  ai: { zh: "AI 模块", en: "AI" },
+  dashboard: { zh: "仪表盘", en: "Dashboard" },
+  posts: { zh: "文章管理", en: "Posts" },
+  designWorks: { zh: "设计作品", en: "Design Works" },
+  devWorks: { zh: "开发作品", en: "Development Works" },
+  tutorials: { zh: "视频教程", en: "Tutorials" },
+  orders: { zh: "订单管理", en: "Orders" },
+  categories: { zh: "分类标签", en: "Categories & Tags" },
+  settings: { zh: "网站设置", en: "Settings" },
+  aiAssistant: { zh: "AI 助手", en: "AI Assistant" },
+  knowledge: { zh: "知识库", en: "Knowledge Base" },
+}
+
+function pickLabel(key: keyof typeof ADMIN_LABELS, locale: "zh" | "en"): string {
+  return ADMIN_LABELS[key][locale]
+}
 
 function getFirstCharacter(text: string): string {
   const first = [...text.trim()][0]
@@ -68,24 +65,67 @@ export function AdminSidebar({
   collapsed,
   width,
   onToggleCollapse,
+  uiLocale,
+  onToggleLocale,
 }: {
   siteName: string
   collapsed: boolean
   width: number
   onToggleCollapse: () => void
+  uiLocale: "zh" | "en"
+  onToggleLocale: () => void
 }) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  const mounted = useMounted()
   const displayName = siteName.trim() || defaultSiteName
   const firstChar = getFirstCharacter(displayName)
 
-  const themeLightLabel = defaultNav.themeLightLabel ?? "亮色模式"
-  const themeDarkLabel = defaultNav.themeDarkLabel ?? "暗色模式"
+  const themeLightLabel = uiLocale === "en" ? "Light Mode" : (defaultNav.themeLightLabel ?? "亮色模式")
+  const themeDarkLabel = uiLocale === "en" ? "Dark Mode" : (defaultNav.themeDarkLabel ?? "暗色模式")
   const themeLabel = mounted ? (theme === "dark" ? themeLightLabel : themeDarkLabel) : themeDarkLabel
   const themeIcon = mounted ? (theme === "dark" ? "ri-sun-line" : "ri-moon-line") : "ri-moon-line"
   const themeTooltip = mounted ? themeLabel : themeDarkLabel
+  const dict = getDictionary(uiLocale)
+  const viewSiteLabel = uiLocale === "en" ? "View Site" : "查看网站"
+  const signOutLabel = uiLocale === "en" ? "Sign Out" : "退出登录"
+  const collapseLabel = uiLocale === "en" ? "Collapse" : "收起"
+  const expandLabel = uiLocale === "en" ? "Expand Navigation" : "展开导航"
+  const localeLabel = t(dict, "common.language", "Language")
+  const localeSwitch = uiLocale === "zh" ? "English" : "中文"
+
+  const localizedGroups = [
+    {
+      label: pickLabel("overview", uiLocale),
+      items: [
+        { name: pickLabel("dashboard", uiLocale), href: "/admin", icon: "ri-dashboard-line" },
+      ],
+    },
+    {
+      label: pickLabel("content", uiLocale),
+      items: [
+        { name: pickLabel("posts", uiLocale), href: "/admin/posts", icon: "ri-article-line" },
+        { name: pickLabel("designWorks", uiLocale), href: "/admin/works/design", icon: "ri-palette-line" },
+        { name: pickLabel("devWorks", uiLocale), href: "/admin/works/development", icon: "ri-code-s-slash-line" },
+        { name: pickLabel("tutorials", uiLocale), href: "/admin/tutorials", icon: "ri-video-line" },
+      ],
+    },
+    {
+      label: pickLabel("system", uiLocale),
+      items: [
+        { name: pickLabel("orders", uiLocale), href: "/admin/orders", icon: "ri-shopping-cart-line" },
+        { name: pickLabel("categories", uiLocale), href: "/admin/categories", icon: "ri-price-tag-3-line" },
+        { name: pickLabel("settings", uiLocale), href: "/admin/settings", icon: "ri-settings-3-line" },
+      ],
+    },
+    {
+      label: pickLabel("ai", uiLocale),
+      items: [
+        { name: pickLabel("aiAssistant", uiLocale), href: "/admin/ai", icon: "ri-robot-2-line" },
+        { name: pickLabel("knowledge", uiLocale), href: "/admin/ai-knowledge", icon: "ri-database-2-line" },
+      ],
+    },
+  ]
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -115,14 +155,14 @@ export function AdminSidebar({
                 <span className="font-serif text-xl font-bold tracking-tight text-foreground truncate leading-none">
                   {displayName}
                 </span>
-                <span className="text-sm text-muted-foreground shrink-0 leading-none translate-y-[-1px]">管理后台</span>
+                <span className="text-sm text-muted-foreground shrink-0 leading-none translate-y-[-1px]">{t(dict, "admin.title", "Admin")}</span>
               </Link>
             )}
           </div>
 
           {/* Navigation */}
           <nav className="flex-1 overflow-y-auto p-4 space-y-4">
-            {navGroups.map((group, groupIndex) => (
+            {localizedGroups.map((group, groupIndex) => (
               <div key={group.label}>
                 {/* Group label / divider */}
                 {groupIndex > 0 && (
@@ -140,7 +180,7 @@ export function AdminSidebar({
                   {group.items.map((item) => {
                     const isActive =
                       pathname === item.href ||
-                      (item.href !== "/admin" && pathname.startsWith(item.href))
+                      (item.href !== "/admin" && pathname.startsWith(`${item.href}/`))
                     return (
                       <SidebarTooltip key={item.href} label={item.name} collapsed={collapsed}>
                         <Link
@@ -190,7 +230,7 @@ export function AdminSidebar({
               </Button>
             </SidebarTooltip>
 
-            <SidebarTooltip label="查看网站" collapsed={collapsed}>
+            <SidebarTooltip label={viewSiteLabel} collapsed={collapsed}>
               <Link
                 href="/"
                 className={cn(
@@ -199,11 +239,11 @@ export function AdminSidebar({
                 )}
               >
                 <i className="ri-global-line text-base shrink-0" />
-                {!collapsed && <span className="tracking-wide">查看网站</span>}
+                {!collapsed && <span className="tracking-wide">{viewSiteLabel}</span>}
               </Link>
             </SidebarTooltip>
 
-            <SidebarTooltip label="退出登录" collapsed={collapsed}>
+            <SidebarTooltip label={signOutLabel} collapsed={collapsed}>
               <Button
                 variant="ghost"
                 size={collapsed ? "icon" : "default"}
@@ -216,11 +256,28 @@ export function AdminSidebar({
                 onClick={() => signOut({ callbackUrl: "/admin/login" })}
               >
                 <i className="ri-logout-box-r-line text-base shrink-0" />
-                {!collapsed && <span className="tracking-wide">退出登录</span>}
+                {!collapsed && <span className="tracking-wide">{signOutLabel}</span>}
               </Button>
             </SidebarTooltip>
 
-            <SidebarTooltip label={collapsed ? "展开导航" : "收起"} collapsed={collapsed}>
+            <SidebarTooltip label={localeLabel} collapsed={collapsed}>
+              <Button
+                variant="ghost"
+                size={collapsed ? "icon" : "default"}
+                className={cn(
+                  "text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-all duration-200",
+                  collapsed
+                    ? "size-9 shrink-0"
+                    : "w-full justify-start gap-3 px-3 py-2.5 h-auto"
+                )}
+                onClick={onToggleLocale}
+              >
+                <i className="ri-translate-2 text-base shrink-0" />
+                {!collapsed && <span className="tracking-wide">{localeSwitch}</span>}
+              </Button>
+            </SidebarTooltip>
+
+            <SidebarTooltip label={collapsed ? expandLabel : collapseLabel} collapsed={collapsed}>
               <Button
                 variant="ghost"
                 size={collapsed ? "icon" : "default"}
@@ -238,7 +295,7 @@ export function AdminSidebar({
                     collapsed ? "ri-arrow-right-s-line text-base" : "ri-arrow-left-s-line text-base"
                   )}
                 />
-                {!collapsed && <span className="tracking-wide">收起</span>}
+                {!collapsed && <span className="tracking-wide">{collapseLabel}</span>}
               </Button>
             </SidebarTooltip>
           </div>

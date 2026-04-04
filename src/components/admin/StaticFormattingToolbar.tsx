@@ -4,6 +4,7 @@ import type { CSSProperties } from "react"
 import { useCallback, useEffect, useState } from "react"
 import type { BlockNoteEditor } from "@blocknote/core"
 import { cn } from "@/lib/utils"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 import {
   Popover,
   PopoverTrigger,
@@ -59,6 +60,8 @@ const INITIAL_STATE: ToolbarState = {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function StaticFormattingToolbar({ editor }: { editor: BlockNoteEditor<any, any, any> }) {
+  const { locale } = useAdminUiLocale()
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
   const [state, setState] = useState<ToolbarState>(INITIAL_STATE)
   const [linkUrl, setLinkUrl] = useState("")
   const [showLinkInput, setShowLinkInput] = useState(false)
@@ -249,36 +252,36 @@ export function StaticFormattingToolbar({ editor }: { editor: BlockNoteEditor<an
   return (
     <div className="flex flex-wrap items-center gap-0.5 border-b border-border/60 bg-muted/20 px-2 py-1">
       {/* 文字样式 */}
-      <Btn icon="ri-bold" title="加粗" active={state.bold} onClick={() => toggleStyle("bold")} />
-      <Btn icon="ri-italic" title="斜体" active={state.italic} onClick={() => toggleStyle("italic")} />
-      <Btn icon="ri-underline" title="下划线" active={state.underline} onClick={() => toggleStyle("underline")} />
-      <Btn icon="ri-strikethrough" title="删除线" active={state.strike} onClick={() => toggleStyle("strike")} />
-      <Btn icon="ri-code-line" title="行内代码" active={state.code} onClick={() => toggleStyle("code")} />
+      <Btn icon="ri-bold" title={t("加粗", "Bold")} active={state.bold} onClick={() => toggleStyle("bold")} />
+      <Btn icon="ri-italic" title={t("斜体", "Italic")} active={state.italic} onClick={() => toggleStyle("italic")} />
+      <Btn icon="ri-underline" title={t("下划线", "Underline")} active={state.underline} onClick={() => toggleStyle("underline")} />
+      <Btn icon="ri-strikethrough" title={t("删除线", "Strike")} active={state.strike} onClick={() => toggleStyle("strike")} />
+      <Btn icon="ri-code-line" title={t("行内代码", "Inline code")} active={state.code} onClick={() => toggleStyle("code")} />
 
       <Sep />
 
       {/* 区块类型 */}
       <Btn
         icon="ri-text"
-        title="正文"
+        title={t("正文", "Paragraph")}
         active={state.blockType === "paragraph"}
         onClick={() => setBlockType("paragraph")}
       />
       <Btn
         icon="ri-h-1"
-        title="标题 1"
+        title={t("标题 1", "Heading 1")}
         active={state.blockType === "heading" && state.headingLevel === 1}
         onClick={() => setBlockType("heading", { level: 1 })}
       />
       <Btn
         icon="ri-h-2"
-        title="标题 2"
+        title={t("标题 2", "Heading 2")}
         active={state.blockType === "heading" && state.headingLevel === 2}
         onClick={() => setBlockType("heading", { level: 2 })}
       />
       <Btn
         icon="ri-h-3"
-        title="标题 3"
+        title={t("标题 3", "Heading 3")}
         active={state.blockType === "heading" && state.headingLevel === 3}
         onClick={() => setBlockType("heading", { level: 3 })}
       />
@@ -288,19 +291,19 @@ export function StaticFormattingToolbar({ editor }: { editor: BlockNoteEditor<an
       {/* 列表 */}
       <Btn
         icon="ri-list-unordered"
-        title="无序列表"
+        title={t("无序列表", "Bullet list")}
         active={state.blockType === "bulletListItem"}
         onClick={() => setBlockType("bulletListItem")}
       />
       <Btn
         icon="ri-list-ordered"
-        title="有序列表"
+        title={t("有序列表", "Numbered list")}
         active={state.blockType === "numberedListItem"}
         onClick={() => setBlockType("numberedListItem")}
       />
       <Btn
         icon="ri-checkbox-line"
-        title="待办列表"
+        title={t("待办列表", "Checklist")}
         active={state.blockType === "checkListItem"}
         onClick={() => setBlockType("checkListItem")}
       />
@@ -310,19 +313,19 @@ export function StaticFormattingToolbar({ editor }: { editor: BlockNoteEditor<an
       {/* 对齐 */}
       <Btn
         icon="ri-align-left"
-        title="左对齐"
+        title={t("左对齐", "Align left")}
         active={state.textAlignment === "left"}
         onClick={() => setAlignment("left")}
       />
       <Btn
         icon="ri-align-center"
-        title="居中对齐"
+        title={t("居中对齐", "Align center")}
         active={state.textAlignment === "center"}
         onClick={() => setAlignment("center")}
       />
       <Btn
         icon="ri-align-right"
-        title="右对齐"
+        title={t("右对齐", "Align right")}
         active={state.textAlignment === "right"}
         onClick={() => setAlignment("right")}
       />
@@ -334,7 +337,7 @@ export function StaticFormattingToolbar({ editor }: { editor: BlockNoteEditor<an
         <PopoverTrigger asChild>
           <button
             type="button"
-            title="插入链接"
+            title={t("插入链接", "Insert link")}
             onMouseDown={(e) => e.preventDefault()}
             className={cn(
               "flex items-center justify-center h-7 w-7 rounded text-sm transition-colors",
@@ -361,7 +364,7 @@ export function StaticFormattingToolbar({ editor }: { editor: BlockNoteEditor<an
               onClick={applyLink}
               className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-sm hover:bg-primary/90"
             >
-              确定
+              {t("确定", "Apply")}
             </button>
           </div>
         </PopoverContent>
@@ -374,7 +377,7 @@ export function StaticFormattingToolbar({ editor }: { editor: BlockNoteEditor<an
         <PopoverTrigger asChild>
           <button
             type="button"
-            title="文字和背景颜色"
+            title={t("文字和背景颜色", "Text and background colors")}
             onMouseDown={(e) => e.preventDefault()}
             className="flex items-center justify-center h-7 w-7 rounded text-sm transition-colors text-muted-foreground hover:bg-accent/50 hover:text-foreground"
           >
@@ -383,13 +386,13 @@ export function StaticFormattingToolbar({ editor }: { editor: BlockNoteEditor<an
         </PopoverTrigger>
         <PopoverContent className="w-[220px] p-2 space-y-3" align="start">
           <ColorGrid
-            label="文字颜色"
+            label={t("文字颜色", "Text color")}
             activeColor={state.textColor}
             onSelect={applyTextColor}
             mode="text"
           />
           <ColorGrid
-            label="背景颜色"
+            label={t("背景颜色", "Background color")}
             activeColor={state.backgroundColor}
             onSelect={applyBgColor}
             mode="bg"

@@ -3,6 +3,8 @@
 import { useState, useCallback, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { AdminSidebar } from "@/components/admin/sidebar"
+import { useUiLocale } from "@/hooks/useUiLocale"
+import { AdminUiLocaleProvider } from "@/contexts/AdminUiLocaleContext"
 
 const STORAGE_KEY = "admin-sidebar-width"
 const MIN_WIDTH = 200
@@ -13,22 +15,23 @@ const COLLAPSED_WIDTH = 64
 export function AdminDashboardClient({
   children,
   siteName,
+  defaultLocale = "zh",
 }: {
   children: React.ReactNode
   siteName: string
+  defaultLocale?: "zh" | "en"
 }) {
   const [collapsed, setCollapsed] = useState(false)
-  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_WIDTH)
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    if (typeof window === "undefined") return DEFAULT_WIDTH
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (!stored) return DEFAULT_WIDTH
+    const w = parseInt(stored, 10)
+    return w >= MIN_WIDTH && w <= MAX_WIDTH ? w : DEFAULT_WIDTH
+  })
   const [isDragging, setIsDragging] = useState(false)
   const dragRef = useRef(false)
-
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      const w = parseInt(stored, 10)
-      if (w >= MIN_WIDTH && w <= MAX_WIDTH) setSidebarWidth(w)
-    }
-  }, [])
+  const { locale, toggleLocale } = useUiLocale(defaultLocale)
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (collapsed) return
@@ -66,12 +69,14 @@ export function AdminDashboardClient({
   const currentWidth = collapsed ? COLLAPSED_WIDTH : sidebarWidth
 
   return (
-    <>
+    <AdminUiLocaleProvider value={{ locale, toggleLocale }}>
       <AdminSidebar
         siteName={siteName}
         collapsed={collapsed}
         width={currentWidth}
         onToggleCollapse={() => setCollapsed((prev) => !prev)}
+        uiLocale={locale}
+        onToggleLocale={toggleLocale}
       />
       {/* Drag handle */}
       {!collapsed && (
@@ -93,6 +98,6 @@ export function AdminDashboardClient({
       >
         <div className="px-6 md:px-8 lg:px-12 py-8 admin-content">{children}</div>
       </main>
-    </>
+    </AdminUiLocaleProvider>
   )
 }

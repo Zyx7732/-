@@ -1,6 +1,6 @@
 "use client"
 /** 订单管理：列表、筛选、批量更新状态、查看详情。 */
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -23,6 +23,7 @@ import { useTableControls } from "@/hooks/useTableControls"
 import { TableToolbar, type ToolbarFilter, type BatchAction } from "@/components/admin/TableToolbar"
 import { TablePagination } from "@/components/admin/TablePagination"
 import { SortableTableHead } from "@/components/admin/SortableTableHead"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 type OrderItem = {
   id: string
@@ -37,14 +38,17 @@ type OrderItem = {
   createdAt: string
 }
 
-const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  PENDING: { label: "待支付", variant: "outline" },
-  PAID: { label: "已支付", variant: "default" },
-  CANCELLED: { label: "已取消", variant: "destructive" },
-  REFUNDED: { label: "已退款", variant: "destructive" },
-}
-
 export default function OrdersPage() {
+  const { locale } = useAdminUiLocale()
+  const t = useCallback((zh: string, en: string) => (locale === "en" ? en : zh), [locale])
+
+  const statusMap: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+    PENDING: { label: t("待支付", "Pending"), variant: "outline" },
+    PAID: { label: t("已支付", "Paid"), variant: "default" },
+    CANCELLED: { label: t("已取消", "Cancelled"), variant: "destructive" },
+    REFUNDED: { label: t("已退款", "Refunded"), variant: "destructive" },
+  }
+
   const [orders, setOrders] = useState<OrderItem[]>([])
   const [loading, setLoading] = useState(true)
   const [forbiddenMessage, setForbiddenMessage] = useState<string | null>(null)
@@ -64,55 +68,24 @@ export default function OrdersPage() {
   const toolbarFilters: ToolbarFilter[] = useMemo(() => [
     {
       key: "status",
-      label: "状态",
+      label: t("状态", "Status"),
       options: [
-        { label: "待支付", value: "PENDING" },
-        { label: "已支付", value: "PAID" },
-        { label: "已取消", value: "CANCELLED" },
-        { label: "已退款", value: "REFUNDED" },
+        { label: t("待支付", "Pending"), value: "PENDING" },
+        { label: t("已支付", "Paid"), value: "PAID" },
+        { label: t("已取消", "Cancelled"), value: "CANCELLED" },
+        { label: t("已退款", "Refunded"), value: "REFUNDED" },
       ],
     },
-  ], [])
+  ], [t])
 
-  const batchActions: BatchAction[] = useMemo(() => {
-    const ids = Array.from(tc.selectedIds)
-    const selectedOrders = orders.filter((o) => ids.includes(o.id))
-    const allPending = selectedOrders.every((o) => o.status === "PENDING")
-    const actions: BatchAction[] = []
-    if (allPending && selectedOrders.length > 0) {
-      actions.push(
-        {
-          label: "标记已支付", icon: "ri-checkbox-circle-line", onClick: () => handleBatchStatus("PAID"),
-          needConfirm: true, confirmTitle: `确定将 ${selectedOrders.length} 个订单标记为已支付？`,
-        },
-        {
-          label: "取消订单", icon: "ri-close-circle-line", variant: "destructive", onClick: () => handleBatchStatus("CANCELLED"),
-          needConfirm: true, confirmTitle: `确定取消选中的 ${selectedOrders.length} 个订单？`, confirmDescription: "取消后不可撤回",
-        },
-      )
-    }
-    if (selectedOrders.length > 0) {
-      actions.push({
-        label: "删除选中订单",
-        icon: "ri-delete-bin-line",
-        variant: "destructive",
-        onClick: () => handleBatchDelete(),
-        needConfirm: true,
-        confirmTitle: `确定删除选中的 ${selectedOrders.length} 个订单？`,
-        confirmDescription: "删除后不可恢复",
-      })
-    }
-    return actions
-  }, [tc.selectedIds, orders])
-
-  function fetchOrders() {
+  const fetchOrders = useCallback(() => {
     setLoading(true)
     setForbiddenMessage(null)
     fetch("/api/orders?all=1", { credentials: "include" })
       .then(async (r) => {
         const data = await r.json()
         if (r.status === 403) {
-          setForbiddenMessage(typeof data?.error === "string" ? data.error : "无权限查看订单")
+          setForbiddenMessage(typeof data?.error === "string" ? data.error : t("无权限查看订单", "No permission to view orders"))
           setOrders([])
         } else {
           setOrders(Array.isArray(data) ? data : [])
@@ -120,9 +93,9 @@ export default function OrdersPage() {
       })
       .catch(() => setOrders([]))
       .finally(() => setLoading(false))
-  }
+  }, [t])
 
-  useEffect(() => { fetchOrders() }, [])
+  useEffect(() => { fetchOrders() }, [fetchOrders])
 
   async function updateStatus(orderId: string, newStatus: string) {
     setActionLoading(orderId)
@@ -137,7 +110,7 @@ export default function OrdersPage() {
     } finally { setActionLoading(null) }
   }
 
-  async function handleBatchStatus(status: string) {
+  const handleBatchStatus = useCallback(async (status: string) => {
     const ids = Array.from(tc.selectedIds)
     if (ids.length === 0) return
     try {
@@ -149,9 +122,9 @@ export default function OrdersPage() {
       })
       if (res.ok) { tc.clearSelection(); fetchOrders() }
     } catch { /* ignore */ }
-  }
+  }, [tc, fetchOrders])
 
-  async function handleBatchDelete() {
+  const handleBatchDelete = useCallback(async () => {
     const ids = Array.from(tc.selectedIds)
     if (ids.length === 0) return
     try {
@@ -163,7 +136,38 @@ export default function OrdersPage() {
       })
       if (res.ok) { tc.clearSelection(); fetchOrders() }
     } catch { /* ignore */ }
-  }
+  }, [tc, fetchOrders])
+
+  const batchActions: BatchAction[] = useMemo(() => {
+    const ids = Array.from(tc.selectedIds)
+    const selectedOrders = orders.filter((o) => ids.includes(o.id))
+    const allPending = selectedOrders.every((o) => o.status === "PENDING")
+    const actions: BatchAction[] = []
+    if (allPending && selectedOrders.length > 0) {
+      actions.push(
+        {
+          label: t("标记已支付", "Mark Paid"), icon: "ri-checkbox-circle-line", onClick: () => handleBatchStatus("PAID"),
+          needConfirm: true, confirmTitle: t(`确定将 ${selectedOrders.length} 个订单标记为已支付？`, `Mark ${selectedOrders.length} selected orders as paid?`),
+        },
+        {
+          label: t("取消订单", "Cancel Orders"), icon: "ri-close-circle-line", variant: "destructive", onClick: () => handleBatchStatus("CANCELLED"),
+          needConfirm: true, confirmTitle: t(`确定取消选中的 ${selectedOrders.length} 个订单？`, `Cancel ${selectedOrders.length} selected orders?`), confirmDescription: t("取消后不可撤回", "This cannot be undone"),
+        },
+      )
+    }
+    if (selectedOrders.length > 0) {
+      actions.push({
+        label: t("删除选中订单", "Delete Selected"),
+        icon: "ri-delete-bin-line",
+        variant: "destructive",
+        onClick: () => handleBatchDelete(),
+        needConfirm: true,
+        confirmTitle: t(`确定删除选中的 ${selectedOrders.length} 个订单？`, `Delete ${selectedOrders.length} selected orders?`),
+        confirmDescription: t("删除后不可恢复", "This action cannot be undone"),
+      })
+    }
+    return actions
+  }, [tc.selectedIds, orders, t, handleBatchDelete, handleBatchStatus])
 
   async function deleteOrder(orderId: string) {
     setActionLoading(orderId)
@@ -176,15 +180,15 @@ export default function OrdersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">订单管理</h1>
-        <p className="text-muted-foreground mt-1">查看和管理所有订单</p>
+        <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">{t("订单管理", "Orders")}</h1>
+        <p className="text-muted-foreground mt-1">{t("查看和管理所有订单", "View and manage all orders")}</p>
       </div>
 
       <div className="rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden p-4">
         <TableToolbar
           searchValue={tc.searchTerm}
           onSearchChange={tc.setSearchTerm}
-          searchPlaceholder="搜索订单号、邮箱或商品…"
+          searchPlaceholder={t("搜索订单号、邮箱或商品…", "Search order no, email or product…")}
           filters={toolbarFilters}
           filterValues={tc.filters}
           onFilterChange={tc.setFilter}
@@ -199,22 +203,22 @@ export default function OrdersPage() {
               <TableHead className="w-[40px]">
                 <Checkbox checked={tc.isAllSelected} onCheckedChange={() => tc.toggleSelectAll()} />
               </TableHead>
-              <SortableTableHead column="orderNo" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof OrderItem)}>订单号</SortableTableHead>
-              <TableHead>商品</TableHead>
-              <TableHead>买家</TableHead>
-              <SortableTableHead column="amount" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof OrderItem)}>金额</SortableTableHead>
-              <SortableTableHead column="status" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof OrderItem)}>状态</SortableTableHead>
-              <SortableTableHead column="createdAt" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof OrderItem)}>时间</SortableTableHead>
-              <TableHead className="w-[100px]">操作</TableHead>
+              <SortableTableHead column="orderNo" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof OrderItem)}>{t("订单号", "Order No.")}</SortableTableHead>
+              <TableHead>{t("商品", "Product")}</TableHead>
+              <TableHead>{t("买家", "Buyer")}</TableHead>
+              <SortableTableHead column="amount" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof OrderItem)}>{t("金额", "Amount")}</SortableTableHead>
+              <SortableTableHead column="status" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof OrderItem)}>{t("状态", "Status")}</SortableTableHead>
+              <SortableTableHead column="createdAt" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof OrderItem)}>{t("时间", "Time")}</SortableTableHead>
+              <TableHead className="w-[100px]">{t("操作", "Actions")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">加载中…</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">{t("加载中…", "Loading…")}</TableCell></TableRow>
             ) : forbiddenMessage ? (
               <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">{forbiddenMessage}</TableCell></TableRow>
             ) : tc.pagedData.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">暂无订单</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">{t("暂无订单", "No orders yet")}</TableCell></TableRow>
             ) : (
               tc.pagedData.map((order) => (
                 <TableRow key={order.id}>
@@ -227,15 +231,15 @@ export default function OrdersPage() {
                     <div className="text-sm">{order.buyerEmail}</div>
                     {order.buyerName && <div className="text-xs text-muted-foreground">{order.buyerName}</div>}
                   </TableCell>
-                  <TableCell>{order.amount > 0 ? `¥${order.amount}` : "开源"}</TableCell>
+                  <TableCell>{order.amount > 0 ? `¥${order.amount}` : t("开源", "Open Source")}</TableCell>
                   <TableCell>
                     <Badge variant={statusMap[order.status]?.variant || "default"}>
                       {statusMap[order.status]?.label || order.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                    {new Date(order.createdAt).toLocaleDateString("zh-CN")}{" "}
-                    {new Date(order.createdAt).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
+                    {new Date(order.createdAt).toLocaleDateString(locale === "en" ? "en-US" : "zh-CN")}{" "}
+                    {new Date(order.createdAt).toLocaleTimeString(locale === "en" ? "en-US" : "zh-CN", { hour: "2-digit", minute: "2-digit" })}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -247,23 +251,23 @@ export default function OrdersPage() {
                       <DropdownMenuContent align="end">
                         {order.status === "PENDING" && (
                           <DropdownMenuItem onClick={() => updateStatus(order.id, "PAID")}>
-                            <i className="ri-checkbox-circle-line mr-2" />标记已支付
+                            <i className="ri-checkbox-circle-line mr-2" />{t("标记已支付", "Mark Paid")}
                           </DropdownMenuItem>
                         )}
                         {order.status === "PENDING" && <DropdownMenuSeparator />}
                         {order.status === "PENDING" && (
                           <DropdownMenuItem className="text-destructive" onClick={() => setConfirmAction({ orderId: order.id, orderNo: order.orderNo, action: "CANCELLED" })}>
-                            <i className="ri-close-circle-line mr-2" />取消订单
+                            <i className="ri-close-circle-line mr-2" />{t("取消订单", "Cancel Order")}
                           </DropdownMenuItem>
                         )}
                         {order.status === "PAID" && (
                           <DropdownMenuItem className="text-destructive" onClick={() => setConfirmAction({ orderId: order.id, orderNo: order.orderNo, action: "REFUNDED" })}>
-                            <i className="ri-refund-2-line mr-2" />退款
+                            <i className="ri-refund-2-line mr-2" />{t("退款", "Refund")}
                           </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-destructive" onClick={() => setConfirmAction({ orderId: order.id, orderNo: order.orderNo, action: "DELETE" })}>
-                          <i className="ri-delete-bin-line mr-2" />删除订单
+                          <i className="ri-delete-bin-line mr-2" />{t("删除订单", "Delete Order")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -285,20 +289,20 @@ export default function OrdersPage() {
           <div className="bg-card rounded-xl border p-6 shadow-lg max-w-sm w-full mx-4 space-y-4">
             <h3 className="text-lg font-semibold">
               {confirmAction.action === "DELETE"
-                ? "确认删除订单"
+                ? t("确认删除订单", "Confirm Order Deletion")
                 : confirmAction.action === "CANCELLED"
-                  ? "确认取消订单"
-                  : "确认退款"}
+                  ? t("确认取消订单", "Confirm Order Cancellation")
+                  : t("确认退款", "Confirm Refund")}
             </h3>
             <p className="text-sm text-muted-foreground">
               {confirmAction.action === "DELETE"
-                ? `确定要删除订单 ${confirmAction.orderNo} 吗？删除后不可恢复。`
+                ? t(`确定要删除订单 ${confirmAction.orderNo} 吗？删除后不可恢复。`, `Delete order ${confirmAction.orderNo}? This action cannot be undone.`)
                 : confirmAction.action === "CANCELLED"
-                  ? `确定要取消订单 ${confirmAction.orderNo} 吗？此操作不可撤销。`
-                  : `确定要对订单 ${confirmAction.orderNo} 执行退款吗？此操作不可撤销。`}
+                  ? t(`确定要取消订单 ${confirmAction.orderNo} 吗？此操作不可撤销。`, `Cancel order ${confirmAction.orderNo}? This action cannot be undone.`)
+                  : t(`确定要对订单 ${confirmAction.orderNo} 执行退款吗？此操作不可撤销。`, `Refund order ${confirmAction.orderNo}? This action cannot be undone.`)}
             </p>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setConfirmAction(null)}>取消</Button>
+              <Button variant="outline" size="sm" onClick={() => setConfirmAction(null)}>{t("取消", "Cancel")}</Button>
               <Button
                 variant="destructive"
                 size="sm"
@@ -313,12 +317,12 @@ export default function OrdersPage() {
                 }}
               >
                 {actionLoading === confirmAction.orderId
-                  ? "处理中…"
+                  ? t("处理中…", "Processing…")
                   : confirmAction.action === "DELETE"
-                    ? "确认删除"
+                    ? t("确认删除", "Confirm Delete")
                     : confirmAction.action === "CANCELLED"
-                      ? "确认取消"
-                      : "确认退款"}
+                      ? t("确认取消", "Confirm Cancel")
+                      : t("确认退款", "Confirm Refund")}
               </Button>
             </div>
           </div>

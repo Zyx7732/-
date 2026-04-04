@@ -2,11 +2,5 @@
 import { WorksListClient } from "../WorksListClient"
 
 export default function DesignWorksPage() {
-  return (
-    <WorksListClient
-      workType="design"
-      title="设计作品"
-      description="管理你的设计类作品"
-    />
-  )
+  return <WorksListClient workType="design" />
 }

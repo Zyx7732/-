@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 interface TablePaginationProps {
   page: number
@@ -26,6 +27,7 @@ export function TablePagination({
   onPageChange,
   onPageSizeChange,
 }: TablePaginationProps) {
+  const { locale } = useAdminUiLocale()
   if (totalItems === 0) return null
 
   const start = (page - 1) * pageSize + 1
@@ -34,7 +36,7 @@ export function TablePagination({
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 pt-4">
       <p className="text-xs text-muted-foreground tabular-nums">
-        第 {start}–{end} 条，共 {totalItems} 条
+        {locale === "en" ? `${start}–${end} of ${totalItems}` : `第 ${start}–${end} 条，共 ${totalItems} 条`}
       </p>
 
       <div className="flex items-center gap-2">
@@ -46,9 +48,9 @@ export function TablePagination({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="10">10 条/页</SelectItem>
-            <SelectItem value="20">20 条/页</SelectItem>
-            <SelectItem value="50">50 条/页</SelectItem>
+            <SelectItem value="10">{locale === "en" ? "10 / page" : "10 条/页"}</SelectItem>
+            <SelectItem value="20">{locale === "en" ? "20 / page" : "20 条/页"}</SelectItem>
+            <SelectItem value="50">{locale === "en" ? "50 / page" : "50 条/页"}</SelectItem>
           </SelectContent>
         </Select>
 

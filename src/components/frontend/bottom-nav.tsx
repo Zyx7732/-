@@ -6,6 +6,9 @@ import { useTheme } from "next-themes"
 import { cn } from "@/lib/utils"
 import { useNavConfig } from "@/hooks/useNavConfig"
 import { defaultNav } from "@/lib/nav-config"
+import { detectLocaleFromPath, withLocalePath } from "@/lib/i18n-path"
+import { oppositeLocale } from "@/lib/i18n"
+import { resolveFrontendSectionVisibility } from "@/lib/page-copy"
 
 const navItems = [
   { key: "worksDesign" as const, href: "/works/design", icon: "ri-palette-line", activeIcon: "ri-palette-fill" },
@@ -17,22 +20,32 @@ const navItems = [
 
 export function BottomNav() {
   const pathname = usePathname()
-  const { nav } = useNavConfig()
+  const { nav, pageCopy } = useNavConfig()
   const { theme, setTheme } = useTheme()
+  const locale = detectLocaleFromPath(pathname || "/")
+  const nextLocale = oppositeLocale(locale)
+  const sectionVisibility = resolveFrontendSectionVisibility(pageCopy)
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.key === "worksDesign") return sectionVisibility.worksDesign
+    if (item.key === "worksDev") return sectionVisibility.worksDev
+    if (item.key === "blog") return sectionVisibility.blog
+    if (item.key === "tutorials") return sectionVisibility.tutorials
+    return true
+  })
 
   return (
     <nav className="bottom-nav">
       <div className="glass-strong rounded-full px-2 py-2 flex items-center gap-1 shadow-xl">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const label = nav[item.key] ?? (defaultNav as Record<string, string>)[item.key] ?? item.key
           const isActive =
-            pathname === item.href ||
-            (item.href !== "/" && pathname.startsWith(item.href))
+            pathname === withLocalePath(item.href, locale) ||
+            (item.href !== "/" && pathname.startsWith(withLocalePath(item.href, locale)))
 
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={withLocalePath(item.href, locale)}
               aria-label={label}
               title={label}
               className={cn(
@@ -54,6 +67,19 @@ export function BottomNav() {
           <i className="ri-sun-line dark:hidden text-xl" />
           <i className="ri-moon-line hidden dark:inline text-xl" />
         </button>
+        <Link
+          href={withLocalePath(pathname || "/", nextLocale)}
+          onClick={async () => {
+            await fetch("/api/locale", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ locale: nextLocale }),
+            }).catch(() => {})
+          }}
+          className="flex items-center justify-center p-3 rounded-full text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-200 active:scale-95"
+        >
+          <i className="ri-translate-2 text-xl" />
+        </Link>
       </div>
     </nav>
   )

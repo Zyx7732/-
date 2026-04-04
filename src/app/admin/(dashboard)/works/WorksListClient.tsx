@@ -22,6 +22,7 @@ import { TableToolbar, type ToolbarFilter, type BatchAction } from "@/components
 import { TablePagination } from "@/components/admin/TablePagination"
 import { SortableTableHead } from "@/components/admin/SortableTableHead"
 import { ConfirmPopover } from "@/components/admin/ConfirmPopover"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 type Work = {
   id: string
@@ -38,11 +39,13 @@ type Work = {
 
 type WorksListClientProps = {
   workType: "design" | "development"
-  title: string
-  description: string
 }
 
-export function WorksListClient({ workType, title, description }: WorksListClientProps) {
+export function WorksListClient({ workType }: WorksListClientProps) {
+  const { locale } = useAdminUiLocale()
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
+  const title = workType === "design" ? t("设计作品", "Design Works") : t("开发作品", "Development Works")
+  const description = workType === "design" ? t("管理你的设计类作品", "Manage your design works") : t("管理你的开发 / 开源项目", "Manage your development and open-source projects")
   const router = useRouter()
   const [works, setWorks] = useState<Work[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,41 +63,41 @@ export function WorksListClient({ workType, title, description }: WorksListClien
     const filters: ToolbarFilter[] = [
       {
         key: "status",
-        label: "状态",
+        label: t("状态", "Status"),
         options: [
-          { label: "已发布", value: "PUBLISHED" },
-          { label: "草稿", value: "DRAFT" },
+          { label: t("已发布", "Published"), value: "PUBLISHED" },
+          { label: t("草稿", "Draft"), value: "DRAFT" },
         ],
       },
     ]
     if (workType === "design") {
       filters.push({
         key: "isFree",
-        label: "定价",
+        label: t("定价", "Pricing"),
         options: [
-          { label: "开源", value: "true" },
-          { label: "付费", value: "false" },
+          { label: t("开源", "Open Source"), value: "true" },
+          { label: t("付费", "Paid"), value: "false" },
         ],
       })
     }
     if (categories.length > 0) {
       filters.push({
         key: "category.name",
-        label: "分类",
+        label: t("分类", "Category"),
         options: categories.map((c) => ({ label: c, value: c })),
       })
     }
     return filters
-  }, [categories])
+  }, [categories, locale, workType])
 
   const batchActions: BatchAction[] = useMemo(() => [
-    { label: "发布", icon: "ri-check-line", onClick: () => handleBatchStatus("PUBLISHED") },
-    { label: "转草稿", icon: "ri-draft-line", onClick: () => handleBatchStatus("DRAFT") },
+    { label: t("发布", "Publish"), icon: "ri-check-line", onClick: () => handleBatchStatus("PUBLISHED") },
+    { label: t("转草稿", "Move to Draft"), icon: "ri-draft-line", onClick: () => handleBatchStatus("DRAFT") },
     {
-      label: "删除", icon: "ri-delete-bin-line", variant: "destructive" as const, onClick: handleBatchDelete,
-      needConfirm: true, confirmTitle: `确定删除选中的 ${tc.selectedIds.size} 个作品？`, confirmDescription: "删除后不可恢复",
+      label: t("删除", "Delete"), icon: "ri-delete-bin-line", variant: "destructive" as const, onClick: handleBatchDelete,
+      needConfirm: true, confirmTitle: t(`确定删除选中的 ${tc.selectedIds.size} 个作品？`, `Delete ${tc.selectedIds.size} selected works?`), confirmDescription: t("删除后不可恢复", "This action cannot be undone"),
     },
-  ], [tc.selectedIds])
+  ], [tc.selectedIds, locale])
 
   async function loadWorks() {
     setLoading(true)
@@ -116,8 +119,8 @@ export function WorksListClient({ workType, title, description }: WorksListClien
         method: "PUT", headers: { "Content-Type": "application/json" },
         credentials: "include", body: JSON.stringify({ sortOrder }),
       })
-      if (!res.ok) toast.error("排序保存失败")
-    } catch { toast.error("网络错误") }
+      if (!res.ok) toast.error(t("排序保存失败", "Failed to save sort order"))
+    } catch { toast.error(t("网络错误", "Network error")) }
   }
 
   function handleReorder(reordered: Work[]) {
@@ -135,12 +138,12 @@ export function WorksListClient({ workType, title, description }: WorksListClien
       const res = await fetch("/api/works", {
         method: "POST", headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ title: "无标题作品", slug: `draft-${Date.now()}`, workType: workType === "development" ? "DEVELOPMENT" : "DESIGN" }),
+        body: JSON.stringify({ title: t("无标题作品", "Untitled Work"), slug: `draft-${Date.now()}`, workType: workType === "development" ? "DEVELOPMENT" : "DESIGN" }),
       })
       const data = await res.json()
       if (res.ok && data?.id) router.push(`/admin/works/${data.id}/edit`)
-      else toast.error(data?.error || "创建失败")
-    } catch { toast.error("网络错误") }
+      else toast.error(data?.error || t("创建失败", "Create failed"))
+    } catch { toast.error(t("网络错误", "Network error")) }
     finally { setCreating(false) }
   }
 
@@ -149,7 +152,7 @@ export function WorksListClient({ workType, title, description }: WorksListClien
     try {
       const res = await fetch(`/api/works/${id}`, { method: "DELETE", credentials: "include" })
       if (res.ok) setWorks((prev) => prev.filter((w) => w.id !== id))
-      else { const err = await res.json().catch(() => ({})); toast.error(err.error || "删除失败") }
+      else { const err = await res.json().catch(() => ({})); toast.error(err.error || t("删除失败", "Delete failed")) }
     } finally { setDeletingId(null) }
   }
 
@@ -167,12 +170,12 @@ export function WorksListClient({ workType, title, description }: WorksListClien
         if (deletedIds.length > 0) setWorks((prev) => prev.filter((w) => !deletedIds.includes(w.id)))
         tc.clearSelection()
         const blockedNames = (data.blocked as { id: string; title: string }[]).map((b) => b.title)
-        toast.warning(`${data.blocked.length} 个作品因有关联订单无法删除`, {
+        toast.warning(t(`${data.blocked.length} 个作品因有关联订单无法删除`, `${data.blocked.length} works cannot be deleted due to linked orders`), {
           duration: 8000,
           description: (
             <div className="mt-1 space-y-1">
-              {data.deleted > 0 && <p className="text-muted-foreground">已成功删除 {data.deleted} 个作品</p>}
-              <p>无法删除：{blockedNames.map((name: string, i: number) => (
+              {data.deleted > 0 && <p className="text-muted-foreground">{t(`已成功删除 ${data.deleted} 个作品`, `${data.deleted} works deleted`)}</p>}
+              <p>{t("无法删除：", "Cannot delete: ")}{blockedNames.map((name: string, i: number) => (
                 <span key={i}>{i > 0 && "、"}<strong className="font-semibold">{name}</strong></span>
               ))}</p>
             </div>
@@ -181,11 +184,11 @@ export function WorksListClient({ workType, title, description }: WorksListClien
       } else if (res.ok) {
         setWorks((prev) => prev.filter((w) => !ids.includes(w.id)))
         tc.clearSelection()
-        toast.success(`已删除 ${ids.length} 个作品`)
+        toast.success(t(`已删除 ${ids.length} 个作品`, `${ids.length} works deleted`))
       } else {
-        toast.error(data.error || "批量删除失败")
+        toast.error(data.error || t("批量删除失败", "Batch delete failed"))
       }
-    } catch { toast.error("网络错误") }
+    } catch { toast.error(t("网络错误", "Network error")) }
   }
 
   async function handleBatchStatus(status: string) {
@@ -196,13 +199,13 @@ export function WorksListClient({ workType, title, description }: WorksListClien
         method: "PATCH", headers: { "Content-Type": "application/json" },
         credentials: "include", body: JSON.stringify({ ids, status }),
       })
-      if (res.ok) { setWorks((prev) => prev.map((w) => ids.includes(w.id) ? { ...w, status } : w)); tc.clearSelection(); toast.success(`已更新 ${ids.length} 个作品状态`) }
-      else toast.error("批量更新失败")
-    } catch { toast.error("网络错误") }
+      if (res.ok) { setWorks((prev) => prev.map((w) => ids.includes(w.id) ? { ...w, status } : w)); tc.clearSelection(); toast.success(t(`已更新 ${ids.length} 个作品状态`, `${ids.length} works updated`)) }
+      else toast.error(t("批量更新失败", "Batch update failed"))
+    } catch { toast.error(t("网络错误", "Network error")) }
   }
 
   function formatDate(dateStr: string) {
-    try { return new Date(dateStr).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }) }
+    try { return new Date(dateStr).toLocaleDateString(locale === "en" ? "en-US" : "zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }) }
     catch { return dateStr }
   }
 
@@ -218,12 +221,12 @@ export function WorksListClient({ workType, title, description }: WorksListClien
         <TableCell>{work.category?.name ?? "-"}</TableCell>
         {workType === "design" && (
           <TableCell>
-            {work.isFree ? <Badge variant="secondary">开源</Badge> : (work.price != null && work.price > 0 ? `¥${work.price}` : "-")}
+            {work.isFree ? <Badge variant="secondary">{t("开源", "Open Source")}</Badge> : (work.price != null && work.price > 0 ? `¥${work.price}` : "-")}
           </TableCell>
         )}
         <TableCell>
           <Badge variant={work.status === "PUBLISHED" ? "default" : "secondary"}>
-            {work.status === "PUBLISHED" ? "已发布" : "草稿"}
+            {work.status === "PUBLISHED" ? t("已发布", "Published") : t("草稿", "Draft")}
           </Badge>
         </TableCell>
         <TableCell>{formatDate(work.createdAt)}</TableCell>
@@ -236,9 +239,9 @@ export function WorksListClient({ workType, title, description }: WorksListClien
               <Link href={`/works/${work.slug}`} target="_blank"><i className="ri-eye-line" /></Link>
             </Button>
             <ConfirmPopover
-              title="确定删除该作品？"
-              description="删除后不可恢复"
-              confirmText="删除"
+              title={t("确定删除该作品？", "Delete this work?")}
+              description={t("删除后不可恢复", "This action cannot be undone")}
+              confirmText={t("删除", "Delete")}
               onConfirm={() => handleDelete(work.id)}
               align="end"
             >
@@ -260,7 +263,7 @@ export function WorksListClient({ workType, title, description }: WorksListClien
           <p className="text-muted-foreground mt-1">{description}</p>
         </div>
         <Button onClick={createDraft} disabled={creating}>
-          {creating ? "创建中…" : "上传作品"}
+          {creating ? t("创建中…", "Creating…") : t("上传作品", "New Work")}
         </Button>
       </div>
 
@@ -268,7 +271,7 @@ export function WorksListClient({ workType, title, description }: WorksListClien
         <TableToolbar
           searchValue={tc.searchTerm}
           onSearchChange={tc.setSearchTerm}
-          searchPlaceholder="搜索作品标题…"
+          searchPlaceholder={t("搜索作品标题…", "Search works…")}
           filters={toolbarFilters}
           filterValues={tc.filters}
           onFilterChange={tc.setFilter}
@@ -279,13 +282,13 @@ export function WorksListClient({ workType, title, description }: WorksListClien
 
         {tc.isFiltering && (
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs text-muted-foreground"><i className="ri-filter-line mr-1" />筛选模式 · 拖拽排序已暂停</span>
-            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={tc.resetFilters}>清除筛选</Button>
+            <span className="text-xs text-muted-foreground"><i className="ri-filter-line mr-1" />{t("筛选模式 · 拖拽排序已暂停", "Filter mode · drag sort paused")}</span>
+            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={tc.resetFilters}>{t("清除筛选", "Clear filters")}</Button>
           </div>
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground">加载中…</div>
+          <div className="flex items-center justify-center py-12 text-muted-foreground">{t("加载中…", "Loading…")}</div>
         ) : tc.isFiltering ? (
           <Table>
             <TableHeader>
@@ -293,19 +296,19 @@ export function WorksListClient({ workType, title, description }: WorksListClien
                 <TableHead className="w-[40px]">
                   <Checkbox checked={tc.isAllSelected} onCheckedChange={() => tc.toggleSelectAll()} />
                 </TableHead>
-                <SortableTableHead column="title" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Work)}>作品</SortableTableHead>
-                <SortableTableHead column="category.name" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Work)}>分类</SortableTableHead>
+                <SortableTableHead column="title" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Work)}>{t("作品", "Work")}</SortableTableHead>
+                <SortableTableHead column="category.name" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Work)}>{t("分类", "Category")}</SortableTableHead>
                 {workType === "design" && (
-                  <SortableTableHead column="price" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Work)}>价格</SortableTableHead>
+                  <SortableTableHead column="price" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Work)}>{t("价格", "Price")}</SortableTableHead>
                 )}
-                <SortableTableHead column="status" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Work)}>状态</SortableTableHead>
-                <SortableTableHead column="createdAt" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Work)}>创建时间</SortableTableHead>
-                <TableHead className="w-[100px]">操作</TableHead>
+                <SortableTableHead column="status" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Work)}>{t("状态", "Status")}</SortableTableHead>
+                <SortableTableHead column="createdAt" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Work)}>{t("创建时间", "Created")}</SortableTableHead>
+                <TableHead className="w-[100px]">{t("操作", "Actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {tc.pagedData.length === 0 ? (
-                <TableRow><TableCell colSpan={workType === "design" ? 7 : 6} className="text-center text-muted-foreground py-8">无匹配结果</TableCell></TableRow>
+                <TableRow><TableCell colSpan={workType === "design" ? 7 : 6} className="text-center text-muted-foreground py-8">{t("无匹配结果", "No matches found")}</TableCell></TableRow>
               ) : tc.pagedData.map((work) => (
                 <TableRow key={work.id}>
                   <TableCell className="w-[40px]"><Checkbox checked={tc.selectedIds.has(work.id)} onCheckedChange={() => tc.toggleSelect(work.id)} /></TableCell>
@@ -323,15 +326,15 @@ export function WorksListClient({ workType, title, description }: WorksListClien
                   <TableHead className="w-[40px]">
                     <Checkbox checked={tc.isAllSelected} onCheckedChange={() => tc.toggleSelectAll()} />
                   </TableHead>
-                  <TableHead>作品</TableHead>
-                  <TableHead>分类</TableHead>
-                  {workType === "design" && <TableHead>价格</TableHead>}
-                  <TableHead>状态</TableHead>
-                  <TableHead>创建时间</TableHead>
-                  <TableHead className="w-[100px]">操作</TableHead>
+                  <TableHead>{t("作品", "Work")}</TableHead>
+                  <TableHead>{t("分类", "Category")}</TableHead>
+                  {workType === "design" && <TableHead>{t("价格", "Price")}</TableHead>}
+                  <TableHead>{t("状态", "Status")}</TableHead>
+                  <TableHead>{t("创建时间", "Created")}</TableHead>
+                  <TableHead className="w-[100px]">{t("操作", "Actions")}</TableHead>
                 </TableRow>
               </TableHeader>
-              <SortableTableBody items={works} columnCount={workType === "design" ? 8 : 7} emptyText="暂无作品，点击「上传作品」添加">
+              <SortableTableBody items={works} columnCount={workType === "design" ? 8 : 7} emptyText={t("暂无作品，点击「上传作品」添加", "No works yet. Click \"New Work\" to add one.")}>
                 {(work) => (
                   <>
                     <TableCell className="w-[40px]">

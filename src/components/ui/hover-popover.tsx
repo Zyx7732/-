@@ -18,9 +18,15 @@ export function HoverPopover({
   side?: "top" | "bottom" | "left" | "right"
   align?: "start" | "center" | "end"
 }) {
+  const [hydrated, setHydrated] = React.useState(false)
   const [open, setOpen] = React.useState(false)
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout>>(null)
   const touchedRef = React.useRef(false)
+
+  React.useEffect(() => {
+    const raf = window.requestAnimationFrame(() => setHydrated(true))
+    return () => window.cancelAnimationFrame(raf)
+  }, [])
 
   const handleEnter = React.useCallback(() => {
     if (touchedRef.current) return
@@ -39,6 +45,10 @@ export function HoverPopover({
     touchedRef.current = true
     setOpen((prev) => !prev)
   }, [])
+
+  if (!hydrated) {
+    return <span className="inline-flex items-center">{children}</span>
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

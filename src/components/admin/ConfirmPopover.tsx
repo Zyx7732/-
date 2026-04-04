@@ -7,6 +7,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 interface ConfirmPopoverProps {
   /** Popover title */
@@ -36,8 +37,8 @@ interface ConfirmPopoverProps {
 export function ConfirmPopover({
   title,
   description,
-  confirmText = "确认",
-  cancelText = "取消",
+  confirmText,
+  cancelText,
   variant = "destructive",
   onConfirm,
   children,
@@ -46,6 +47,9 @@ export function ConfirmPopover({
   align = "center",
   side = "bottom",
 }: ConfirmPopoverProps) {
+  const { locale } = useAdminUiLocale()
+  const resolvedConfirmText = confirmText ?? (locale === "en" ? "Confirm" : "确认")
+  const resolvedCancelText = cancelText ?? (locale === "en" ? "Cancel" : "取消")
   const [internalOpen, setInternalOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -92,7 +96,7 @@ export function ConfirmPopover({
             onClick={() => setOpen(false)}
             disabled={loading}
           >
-            {cancelText}
+            {resolvedCancelText}
           </Button>
           <Button
             variant={variant}
@@ -102,7 +106,7 @@ export function ConfirmPopover({
             disabled={loading}
           >
             {loading && <i className="ri-loader-4-line animate-spin mr-1" />}
-            {confirmText}
+            {resolvedConfirmText}
           </Button>
         </div>
       </PopoverContent>

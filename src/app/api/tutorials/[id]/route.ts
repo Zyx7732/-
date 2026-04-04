@@ -2,14 +2,23 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/require-admin"
 import prisma from "@/lib/prisma"
 import { normalizeCoverRatio } from "@/lib/cover-ratio"
+import { safeDeleteKnowledgeSource, safeSyncKnowledgeSource } from "@/lib/ai/knowledge-trigger"
+import { DEFAULT_LOCALE, fromPrismaLocale, isLocale, LOCALE_COOKIE_KEY, normalizeLocale } from "@/lib/i18n"
+import { buildTutorialI18nInput, localizeTutorial } from "@/lib/localized-content"
 
 export const dynamic = "force-dynamic"
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const localeParam = new URL(request.url).searchParams.get("locale")
+  const locale = isLocale(localeParam)
+    ? localeParam
+    : normalizeLocale(request.cookies.get(LOCALE_COOKIE_KEY)?.value ?? DEFAULT_LOCALE)
   const { id } = await params
+  const settings = await prisma.settings.findUnique({ where: { id: "settings" }, select: { defaultLocale: true } })
+  const fallbackLocale = fromPrismaLocale(settings?.defaultLocale)
   const item = await prisma.videoTutorial.findUnique({
     where: { id },
     include: { tags: true },
@@ -17,7 +26,7 @@ export async function GET(
   if (!item) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
-  return NextResponse.json(item)
+  return NextResponse.json(localizeTutorial(item as unknown as Record<string, unknown>, locale, fallbackLocale))
 }
 
 export async function PUT(
@@ -39,6 +48,10 @@ export async function PUT(
     categoryId,
     tagIds,
   } = body
+  const existing = await prisma.videoTutorial.findUnique({ where: { id } })
+  if (!existing) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
 
   const item = await prisma.videoTutorial.update({
     where: { id },
@@ -54,9 +67,14 @@ export async function PUT(
       ...(tagIds != null && {
         tags: { set: (tagIds as string[]).map((tid: string) => ({ id: tid })) },
       }),
+      ...(buildTutorialI18nInput({
+        ...existing,
+        ...body,
+      })),
     },
     include: { tags: true },
   })
+  await safeSyncKnowledgeSource("TUTORIAL", item.id)
   return NextResponse.json(item)
 }
 
@@ -68,5 +86,6 @@ export async function DELETE(
   if (!check.authorized) return check.response
   const { id } = await params
   await prisma.videoTutorial.delete({ where: { id } })
+  await safeDeleteKnowledgeSource("TUTORIAL", id)
   return NextResponse.json({ ok: true })
 }

@@ -588,3 +588,155 @@
 .dark .vignette::after {
   background: radial-gradient(ellipse at center, transparent 0%, transparent 50%, rgba(0, 0, 0, 0.4) 100%);
 }
+
+@keyframes ai-launcher-border-flow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes ai-launcher-glow-breathe {
+  0%, 100% {
+    box-shadow:
+      0 6px 16px color-mix(in srgb, var(--color-pride-5) 14%, transparent),
+      0 0 0 color-mix(in srgb, var(--color-pride-2) 0%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 8px 22px color-mix(in srgb, var(--color-pride-5) 28%, transparent),
+      0 0 18px color-mix(in srgb, var(--color-pride-2) 16%, transparent);
+  }
+}
+
+.ai-launcher {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--foreground), var(--foreground)) padding-box,
+    linear-gradient(
+      90deg,
+      var(--color-pride-1),
+      var(--color-pride-2),
+      var(--color-pride-3),
+      var(--color-pride-5),
+      var(--color-pride-6),
+      var(--color-pride-7),
+      var(--color-pride-1)
+    ) border-box;
+  background-size: 100% 100%, 220% 100%;
+  animation: ai-launcher-border-flow 5.5s linear infinite, ai-launcher-glow-breathe 2.8s ease-in-out infinite;
+}
+
+.ai-launcher:hover {
+  box-shadow:
+    0 10px 26px color-mix(in srgb, var(--color-pride-5) 32%, transparent),
+    0 0 24px color-mix(in srgb, var(--color-pride-2) 20%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-launcher {
+    animation: none;
+  }
+}
+
+@keyframes hero-ai-border-flow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 220% 50%; }
+}
+
+.hero-ai-flow-border {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-pride-1) 70%, transparent),
+    color-mix(in srgb, var(--color-pride-2) 70%, transparent),
+    color-mix(in srgb, var(--color-pride-5) 70%, transparent),
+    color-mix(in srgb, var(--color-pride-7) 70%, transparent),
+    color-mix(in srgb, var(--color-pride-1) 70%, transparent)
+  );
+  background-size: 240% 100%;
+  animation: hero-ai-border-flow 7.5s linear infinite;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-pride-5) 10%, transparent);
+}
+
+.hero-ai-flow-inner {
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.hero-ai-flow-outer {
+  position: relative;
+  border-radius: calc(var(--radius-2xl));
+  isolation: isolate;
+}
+
+.hero-ai-flow-outer::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: calc(var(--radius-2xl) + 1px);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-pride-1) 70%, transparent),
+    color-mix(in srgb, var(--color-pride-2) 70%, transparent),
+    color-mix(in srgb, var(--color-pride-5) 70%, transparent),
+    color-mix(in srgb, var(--color-pride-7) 70%, transparent),
+    color-mix(in srgb, var(--color-pride-1) 70%, transparent)
+  );
+  background-size: 240% 100%;
+  animation: hero-ai-border-flow 7.5s linear infinite;
+  z-index: -1;
+}
+
+.assistant-welcome-outer {
+  position: relative;
+  border-radius: calc(var(--radius-2xl));
+  isolation: isolate;
+}
+
+.assistant-welcome-outer::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: calc(var(--radius-2xl) + 1px);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-pride-2) 58%, transparent),
+    color-mix(in srgb, var(--color-pride-5) 58%, transparent),
+    color-mix(in srgb, var(--color-pride-7) 58%, transparent),
+    color-mix(in srgb, var(--color-pride-2) 58%, transparent)
+  );
+  background-size: 220% 100%;
+  animation: hero-ai-border-flow 9s linear infinite;
+  z-index: -1;
+}
+
+.assistant-welcome-inner {
+  position: relative;
+  background: var(--card);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-pride-5) 8%, transparent);
+}
+
+.assistant-welcome-inner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-pride-1) 8%, transparent),
+    transparent 42%,
+    color-mix(in srgb, var(--color-pride-5) 8%, transparent)
+  );
+}
+
+.assistant-welcome-inner > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-ai-flow-border,
+  .hero-ai-flow-outer::before,
+  .assistant-welcome-outer::before {
+    animation: none;
+  }
+}

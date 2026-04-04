@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/require-admin"
 import prisma from "@/lib/prisma"
 import { normalizeCoverRatio } from "@/lib/cover-ratio"
+import { safeSyncKnowledgeSource } from "@/lib/ai/knowledge-trigger"
+import { DEFAULT_LOCALE, fromPrismaLocale, isLocale, LOCALE_COOKIE_KEY, normalizeLocale } from "@/lib/i18n"
+import { buildTutorialI18nInput, localizeTutorial } from "@/lib/localized-content"
 
 export const dynamic = "force-dynamic"
 
@@ -9,6 +12,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const slug = searchParams.get("slug")
+    const locale = normalizeLocale(
+      searchParams.get("locale") ?? request.cookies.get(LOCALE_COOKIE_KEY)?.value ?? DEFAULT_LOCALE,
+    )
+    const settings = await prisma.settings.findUnique({ where: { id: "settings" }, select: { defaultLocale: true } })
+    const fallbackLocale = fromPrismaLocale(settings?.defaultLocale)
 
     if (slug) {
       const item = await prisma.videoTutorial.findUnique({
@@ -18,14 +26,14 @@ export async function GET(request: NextRequest) {
       if (!item) {
         return NextResponse.json({ error: "Not found" }, { status: 404 })
       }
-      return NextResponse.json(item)
+      return NextResponse.json(localizeTutorial(item as unknown as Record<string, unknown>, locale, fallbackLocale))
     }
 
     const list = await prisma.videoTutorial.findMany({
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
       include: { category: true, tags: true },
     })
-    return NextResponse.json(list, {
+    return NextResponse.json(list.map((row) => localizeTutorial(row as unknown as Record<string, unknown>, locale, fallbackLocale)), {
       headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
     })
   } catch (e) {
@@ -64,7 +72,9 @@ export async function POST(request: NextRequest) {
       thumbnail: thumbnail?.trim() || null,
       coverRatio: normalizeCoverRatio(coverRatio),
       sortOrder: typeof sortOrder === "number" ? sortOrder : 0,
+      ...buildTutorialI18nInput(body),
     },
   })
+  await safeSyncKnowledgeSource("TUTORIAL", item.id)
   return NextResponse.json(item)
 }

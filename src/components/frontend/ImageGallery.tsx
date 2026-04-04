@@ -2,12 +2,17 @@
 /** 图片画廊组件：等比缩放展示 + 点击全屏查看 + 左右切换。 */
 import { useState, useCallback, useEffect } from "react"
 import Image from "next/image"
+import { usePathname } from "next/navigation"
+import { detectLocaleFromPath } from "@/lib/i18n-path"
 
 interface ImageGalleryProps {
   images: string[]
 }
 
 export function ImageGallery({ images }: ImageGalleryProps) {
+  const pathname = usePathname()
+  const locale = detectLocaleFromPath(pathname || "/")
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
 
@@ -64,7 +69,8 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           >
             <Image
               src={url}
-              alt={`图片 ${index + 1}`}
+              unoptimized
+              alt={t(`图片 ${index + 1}`, `Image ${index + 1}`)}
               width={1200}
               height={800}
               className="w-full h-auto object-contain"
@@ -123,7 +129,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           <img
             key={images[currentIndex]}
             src={images[currentIndex]}
-            alt={`图片 ${currentIndex + 1}`}
+            alt={t(`图片 ${currentIndex + 1}`, `Image ${currentIndex + 1}`)}
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
             className="select-none"

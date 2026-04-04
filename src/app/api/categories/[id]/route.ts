@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/require-admin"
 import prisma from "@/lib/prisma"
+import { patchI18nObject } from "@/lib/i18n-content"
 
 export const dynamic = "force-dynamic"
 
@@ -12,14 +13,14 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
   const { id } = await params
   const body = await request.json()
-  const { name, slug } = body
+  const { name, slug, nameI18n, slugI18n } = body
 
   const existing = await prisma.category.findUnique({ where: { id } })
   if (!existing) {
     return NextResponse.json({ error: "分类不存在" }, { status: 404 })
   }
 
-  const updateData: Record<string, string> = {}
+  const updateData: Record<string, unknown> = {}
   if (name && typeof name === "string" && name.trim()) {
     updateData.name = name.trim()
   }
@@ -32,6 +33,12 @@ export async function PUT(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "该 Slug 已被使用" }, { status: 409 })
     }
     updateData.slug = slug.trim()
+  }
+  if (nameI18n !== undefined) {
+    updateData.nameI18n = patchI18nObject(existing.nameI18n, nameI18n)
+  }
+  if (slugI18n !== undefined) {
+    updateData.slugI18n = patchI18nObject(existing.slugI18n, slugI18n)
   }
 
   if (Object.keys(updateData).length === 0) {

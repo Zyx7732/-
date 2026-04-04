@@ -12,6 +12,8 @@ import { CardDescriptionHtml } from "@/components/frontend/CardDescriptionHtml"
 import { normalizeAboutModules, type AboutModules } from "@/lib/about-types"
 import { defaultNav } from "@/lib/nav-config"
 import { defaultPageCopy, defaultSiteName } from "@/lib/page-copy"
+import { getDictionary } from "@/locales"
+import { t } from "@/lib/i18n"
 
 type Settings = {
   siteName?: string
@@ -21,19 +23,20 @@ type Settings = {
 }
 
 export default function AboutPage() {
-  const { nav, pageCopy, siteName } = useNavConfig()
+  const { nav, pageCopy, siteName, locale } = useNavConfig()
+  const dict = getDictionary(locale)
   const sectionLabel = nav.about ?? defaultNav.about ?? ""
   const sectionDesc = pageCopy.aboutDesc ?? defaultPageCopy.aboutDesc ?? ""
   const [settings, setSettings] = useState<Settings | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/settings")
+    fetch(`/api/settings?locale=${locale}`)
       .then((r) => r.json())
       .then((data) => setSettings(data))
       .catch(() => setSettings(null))
       .finally(() => setLoading(false))
-  }, [])
+  }, [locale])
 
   const aboutModules = normalizeAboutModules(settings?.about)
   const intro = aboutModules.intro ?? ""
@@ -56,7 +59,7 @@ export default function AboutPage() {
   if (loading) {
     return (
       <div className="min-h-screen px-6 md:px-12 lg:px-16 py-12 flex items-center justify-center text-muted-foreground">
-        加载中…
+        {t(dict, "common.loading", "加载中...")}
       </div>
     )
   }
@@ -92,6 +95,7 @@ export default function AboutPage() {
                 {avatar ? (
                   <Image
                     src={avatar}
+                    unoptimized
                     alt={displayStudioName}
                     width={280}
                     height={350}
@@ -136,7 +140,7 @@ export default function AboutPage() {
                       content={
                         isImg ? (
                           <div className="flex flex-col items-center gap-2">
-                            <img src={trimmed} alt={`${label}二维码`} className="w-36 h-36 rounded-lg object-contain" />
+                            <img src={trimmed} alt={`${label}${t(dict, "frontend.qr_suffix", "二维码")}`} className="w-36 h-36 rounded-lg object-contain" />
                             <span className="text-xs text-muted-foreground">{label}</span>
                           </div>
                         ) : (
@@ -146,7 +150,7 @@ export default function AboutPage() {
                             <button
                               type="button"
                               className="ml-1 p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                              title="复制"
+                              title={t(dict, "common.copy", "复制")}
                               onClick={() => navigator.clipboard.writeText(trimmed)}
                             >
                               <i className="ri-file-copy-line text-sm" />
@@ -184,7 +188,7 @@ export default function AboutPage() {
             prose-headings:font-serif prose-headings:text-foreground
           ">
             {!hasAnyModule ? (
-              <p className="text-muted-foreground">暂无{sectionLabel}内容</p>
+              <p className="text-muted-foreground">{t(dict, "common.empty_prefix", "暂无")}{sectionLabel}{t(dict, "frontend.empty_suffix_content", "内容")}</p>
             ) : (
               <div className="space-y-10">
                 {intro ? (

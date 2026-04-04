@@ -4,12 +4,15 @@ import { useState, useEffect } from "react"
 import { defaultNav, type NavConfig } from "@/lib/nav-config"
 import { defaultPageCopy, type PageCopy } from "@/lib/page-copy"
 import { useFrontendSettingsContext } from "@/contexts/FrontendSettingsContext"
+import { detectLocaleFromPath } from "@/lib/i18n-path"
 
 export type FrontendSettings = {
   nav: NavConfig
   pageCopy: PageCopy
   siteName?: string | null
   socialLinks?: import("@/lib/social-links").SocialLinks | null
+  locale: import("@/lib/i18n").Locale
+  defaultLocale: import("@/lib/i18n").Locale
 }
 
 export function useNavConfig(): FrontendSettings {
@@ -19,11 +22,14 @@ export function useNavConfig(): FrontendSettings {
     pageCopy: defaultPageCopy,
     siteName: null,
     socialLinks: null,
+    locale: "zh",
+    defaultLocale: "zh",
   })
 
   useEffect(() => {
     if (context) return
-    fetch("/api/settings")
+    const locale = typeof window !== "undefined" ? detectLocaleFromPath(window.location.pathname) : fallback.locale
+    fetch(`/api/settings?locale=${locale}`)
       .then((r) => r.json())
       .then((data) => {
         const n = data.nav
@@ -40,10 +46,12 @@ export function useNavConfig(): FrontendSettings {
               : defaultPageCopy,
           siteName: data.siteName ?? null,
           socialLinks,
+          locale: data.locale === "en" ? "en" : locale,
+          defaultLocale: data.defaultLocale === "en" ? "en" : "zh",
         })
       })
       .catch(() => {})
-  }, [context])
+  }, [context, fallback.locale])
 
   return context ?? fallback
 }

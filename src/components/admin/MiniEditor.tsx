@@ -4,6 +4,7 @@ import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import { useEffect, useCallback } from "react"
 import { cn } from "@/lib/utils"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 interface MiniEditorProps {
   value: string
@@ -15,24 +16,27 @@ interface MiniEditorProps {
 }
 
 const TOOLBAR_BUTTONS = [
-  { action: "bold", icon: "ri-bold", title: "加粗" },
-  { action: "italic", icon: "ri-italic", title: "斜体" },
-  { action: "strike", icon: "ri-strikethrough", title: "删除线" },
+  { action: "bold", icon: "ri-bold", titleZh: "加粗", titleEn: "Bold" },
+  { action: "italic", icon: "ri-italic", titleZh: "斜体", titleEn: "Italic" },
+  { action: "strike", icon: "ri-strikethrough", titleZh: "删除线", titleEn: "Strike" },
   { action: "sep" },
-  { action: "bulletList", icon: "ri-list-unordered", title: "无序列表" },
-  { action: "orderedList", icon: "ri-list-ordered", title: "有序列表" },
+  { action: "bulletList", icon: "ri-list-unordered", titleZh: "无序列表", titleEn: "Bullet list" },
+  { action: "orderedList", icon: "ri-list-ordered", titleZh: "有序列表", titleEn: "Numbered list" },
   { action: "sep" },
-  { action: "blockquote", icon: "ri-double-quotes-l", title: "引用" },
-  { action: "code", icon: "ri-code-line", title: "行内代码" },
+  { action: "blockquote", icon: "ri-double-quotes-l", titleZh: "引用", titleEn: "Quote" },
+  { action: "code", icon: "ri-code-line", titleZh: "行内代码", titleEn: "Inline code" },
 ] as const
 
 export function MiniEditor({
   value,
   onChange,
-  placeholder = "输入内容…",
+  placeholder,
   className,
   minHeight = "min-h-[120px]",
 }: MiniEditorProps) {
+  const { locale } = useAdminUiLocale()
+  const defaultPlaceholder = locale === "en" ? "Enter content…" : "输入内容…"
+  const placeholderText = placeholder ?? defaultPlaceholder
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [
@@ -136,7 +140,7 @@ export function MiniEditor({
             <button
               key={btn.action}
               type="button"
-              title={btn.title}
+              title={locale === "en" ? btn.titleEn : btn.titleZh}
               onClick={() => toggleAction(btn.action)}
               className={cn(
                 "flex items-center justify-center h-7 w-7 rounded text-sm transition-colors",
@@ -155,7 +159,7 @@ export function MiniEditor({
       <div className="relative">
         {!value && !editor.isFocused && editor.isEmpty && (
           <div className="absolute top-0 left-0 px-3 py-2 text-sm text-muted-foreground/50 pointer-events-none">
-            {placeholder}
+            {placeholderText}
           </div>
         )}
         <EditorContent editor={editor} />

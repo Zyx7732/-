@@ -4,6 +4,10 @@ export type PageCopy = {
   worksDevDesc?: string
   blogDesc?: string
   tutorialsDesc?: string
+  showWorksDesign?: boolean
+  showWorksDev?: boolean
+  showBlog?: boolean
+  showTutorials?: boolean
   aboutDesc?: string
   heroGreeting?: string
   heroPrefix?: string
@@ -24,6 +28,10 @@ export const defaultPageCopy: PageCopy = {
   worksDevDesc: "开源项目与开发作品展示",
   blogDesc: "分享设计思考、工具技巧与行业见解",
   tutorialsDesc: "视频类教材合集，包含 B 站、YouTube 等",
+  showWorksDesign: true,
+  showWorksDev: true,
+  showBlog: true,
+  showTutorials: true,
   aboutDesc: "",
   heroGreeting: "Hey,",
   heroPrefix: "You're in ",
@@ -46,6 +54,22 @@ export const defaultSiteName = "Fan's Studio"
 
 /** 个人信息展示默认值（Hero、关于页、作者 fallback 共用） */
 export const defaultPersonalName = "范米花儿"
+
+export type FrontendSectionVisibility = {
+  worksDesign: boolean
+  worksDev: boolean
+  blog: boolean
+  tutorials: boolean
+}
+
+export function resolveFrontendSectionVisibility(pageCopy?: PageCopy | null): FrontendSectionVisibility {
+  return {
+    worksDesign: typeof pageCopy?.showWorksDesign === "boolean" ? pageCopy.showWorksDesign : true,
+    worksDev: typeof pageCopy?.showWorksDev === "boolean" ? pageCopy.showWorksDev : true,
+    blog: typeof pageCopy?.showBlog === "boolean" ? pageCopy.showBlog : true,
+    tutorials: typeof pageCopy?.showTutorials === "boolean" ? pageCopy.showTutorials : true,
+  }
+}
 
 /** 站点名归一化：空或无效时返回默认站点名 */
 export function normalizeSiteName(s: string | null | undefined): string {

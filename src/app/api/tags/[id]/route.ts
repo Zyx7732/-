@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/require-admin"
 import prisma from "@/lib/prisma"
+import { patchI18nObject } from "@/lib/i18n-content"
 
 export const dynamic = "force-dynamic"
 
@@ -12,7 +13,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
   const { id } = await params
   const body = await request.json()
-  const { name } = body
+  const { name, nameI18n } = body
 
   if (!name || typeof name !== "string" || !name.trim()) {
     return NextResponse.json({ error: "标签名称不能为空" }, { status: 400 })
@@ -31,7 +32,15 @@ export async function PUT(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "该标签名已存在" }, { status: 409 })
   }
 
-  const updated = await prisma.tag.update({ where: { id }, data: { name: name.trim() } })
+  const updated = await prisma.tag.update({
+    where: { id },
+    data: {
+      name: name.trim(),
+      ...(nameI18n !== undefined
+        ? { nameI18n: patchI18nObject(existing.nameI18n, nameI18n) as Record<string, unknown> }
+        : {}),
+    } as Parameters<typeof prisma.tag.update>[0]["data"],
+  })
   return NextResponse.json(updated)
 }
 

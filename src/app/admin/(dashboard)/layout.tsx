@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth"
 import { getSettingsRow } from "@/lib/settings-db"
 import { normalizeSiteName } from "@/lib/page-copy"
 import { redirect } from "next/navigation"
+import { fromPrismaLocale } from "@/lib/i18n"
 
 export default async function AdminDashboardLayout({
   children,
@@ -19,6 +20,7 @@ export default async function AdminDashboardLayout({
 
   const settings = await getSettingsRow()
   const siteName = normalizeSiteName(settings?.siteName)
+  const defaultLocale = fromPrismaLocale(settings?.defaultLocale)
   const isViewer = (session.user as { role?: string }).role === "VIEWER"
 
   return (
@@ -30,10 +32,12 @@ export default async function AdminDashboardLayout({
         {isViewer && (
           <div className="sticky top-0 z-50 bg-amber-500/90 text-amber-950 text-center text-sm font-medium py-2 px-4 backdrop-blur-sm">
             <i className="ri-eye-line mr-1.5 align-middle" />
-            当前为体验账户，仅供浏览，无法修改内容
+            {defaultLocale === "en"
+              ? "Viewer account: read-only access."
+              : "当前为体验账户，仅供浏览，无法修改内容"}
           </div>
         )}
-        <AdminDashboardClient siteName={siteName}>{children}</AdminDashboardClient>
+        <AdminDashboardClient siteName={siteName} defaultLocale={defaultLocale}>{children}</AdminDashboardClient>
       </div>
     </AdminThemeWrapper>
   )

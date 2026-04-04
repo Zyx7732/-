@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react"
 import type { MediaEntityType } from "@/lib/media-storage"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"]
 const MAX_SIZE = 5 * 1024 * 1024 // 5 MB
@@ -25,6 +26,8 @@ export function CoverImageUpload({
   aspectRatio = "3/4",
   recommendText = "建议按当前比例上传，如 1200x1600",
 }: CoverImageUploadProps) {
+  const { locale } = useAdminUiLocale()
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
@@ -32,11 +35,11 @@ export function CoverImageUpload({
   const upload = useCallback(
     async (file: File) => {
       if (!ALLOWED_TYPES.includes(file.type)) {
-        setError("仅支持 JPG、PNG、WebP、GIF 格式")
+        setError(t("仅支持 JPG、PNG、WebP、GIF 格式", "Only JPG, PNG, WebP, and GIF are supported"))
         return
       }
       if (file.size > MAX_SIZE) {
-        setError("文件大小不能超过 5 MB")
+        setError(t("文件大小不能超过 5 MB", "File size must be less than 5 MB"))
         return
       }
       setError("")
@@ -53,14 +56,14 @@ export function CoverImageUpload({
         })
         const data = await res.json()
         if (!res.ok) {
-          setError(data?.error || "上传失败")
+          setError(data?.error || t("上传失败", "Upload failed"))
           return
         }
         if (data?.url) {
           onChange(data.url)
         }
       } catch {
-        setError("网络错误，请重试")
+        setError(t("网络错误，请重试", "Network error, please try again"))
       } finally {
         setUploading(false)
       }
@@ -85,7 +88,10 @@ export function CoverImageUpload({
     e.preventDefault()
   }
 
-  const hintText = `${recommendText} · 支持 JPG/PNG/WebP/GIF · 最大 5MB`
+  const localizedRecommendText = locale === "en" ? "Recommended ratio follows current setting, e.g. 1200x1600" : recommendText
+  const hintText = locale === "en"
+    ? `${localizedRecommendText} · JPG/PNG/WebP/GIF · Max 5MB`
+    : `${localizedRecommendText} · 支持 JPG/PNG/WebP/GIF · 最大 5MB`
 
   // 有封面图 — 预览模式
   if (value) {
@@ -97,7 +103,7 @@ export function CoverImageUpload({
         >
           <img
             src={value}
-            alt="封面图预览"
+            alt={t("封面图预览", "Cover preview")}
             className="w-full h-full object-cover"
           />
           {/* hover 遮罩 + 操作按钮 */}
@@ -108,7 +114,7 @@ export function CoverImageUpload({
               onClick={() => inputRef.current?.click()}
             >
               <i className="ri-image-edit-line mr-1" />
-              更换
+              {t("更换", "Replace")}
             </button>
             <button
               type="button"
@@ -116,7 +122,7 @@ export function CoverImageUpload({
               onClick={() => onChange("")}
             >
               <i className="ri-delete-bin-line mr-1" />
-              移除
+              {t("移除", "Remove")}
             </button>
           </div>
         </div>
@@ -150,13 +156,13 @@ export function CoverImageUpload({
         {uploading ? (
           <>
             <i className="ri-loader-4-line text-2xl text-muted-foreground animate-spin" />
-            <span className="text-sm text-muted-foreground">上传中…</span>
+            <span className="text-sm text-muted-foreground">{t("上传中…", "Uploading…")}</span>
           </>
         ) : (
           <>
             <i className="ri-image-add-line text-3xl text-muted-foreground/60" />
             <span className="text-sm text-muted-foreground">
-              点击或拖拽图片到此处上传
+              {t("点击或拖拽图片到此处上传", "Click or drag image here to upload")}
             </span>
           </>
         )}

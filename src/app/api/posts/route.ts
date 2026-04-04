@@ -3,6 +3,9 @@ import { auth } from "@/lib/auth"
 import { requireAdmin } from "@/lib/require-admin"
 import prisma from "@/lib/prisma"
 import { normalizeCoverRatio } from "@/lib/cover-ratio"
+import { safeSyncKnowledgeSource } from "@/lib/ai/knowledge-trigger"
+import { DEFAULT_LOCALE, fromPrismaLocale, isLocale, LOCALE_COOKIE_KEY, normalizeLocale } from "@/lib/i18n"
+import { buildPostI18nInput, localizePost } from "@/lib/localized-content"
 
 export const dynamic = "force-dynamic"
 
@@ -11,8 +14,13 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const slug = searchParams.get("slug")
   const all = searchParams.get("all") === "1"
+  const locale = normalizeLocale(
+    searchParams.get("locale") ?? request.cookies.get(LOCALE_COOKIE_KEY)?.value ?? DEFAULT_LOCALE,
+  )
 
   const isAdminRole = (session?.user as { role?: string })?.role === "ADMIN"
+  const settings = await prisma.settings.findUnique({ where: { id: "settings" }, select: { defaultLocale: true } })
+  const fallbackLocale = fromPrismaLocale(settings?.defaultLocale)
 
   if (slug) {
     const post = await prisma.post.findUnique({
@@ -25,7 +33,7 @@ export async function GET(request: NextRequest) {
     if (post.status !== "PUBLISHED" && !isAdminRole) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
-    return NextResponse.json(post)
+    return NextResponse.json(localizePost(post as unknown as Record<string, unknown>, locale, fallbackLocale))
   }
 
   const isAdmin = isAdminRole
@@ -35,7 +43,10 @@ export async function GET(request: NextRequest) {
     include: { category: true, tags: true, author: true },
   })
   const headers = isAdmin ? undefined : { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" }
-  return NextResponse.json(list, { headers })
+  return NextResponse.json(
+    list.map((row) => localizePost(row as unknown as Record<string, unknown>, locale, fallbackLocale)),
+    { headers },
+  )
 }
 
 export async function POST(request: NextRequest) {
@@ -75,7 +86,11 @@ export async function POST(request: NextRequest) {
       status: status === "PUBLISHED" ? "PUBLISHED" : "DRAFT",
       categoryId: categoryId || null,
       authorId: check.userId,
+      ...buildPostI18nInput(body),
     },
   })
+  if (post.status === "PUBLISHED") {
+    await safeSyncKnowledgeSource("POST", post.id)
+  }
   return NextResponse.json(post)
 }

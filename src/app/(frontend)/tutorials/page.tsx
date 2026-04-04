@@ -2,13 +2,17 @@
 /** 视频教程列表页：教程卡片网格，文案来自设置。 */
 import { CardDescriptionHtml } from "@/components/frontend/CardDescriptionHtml"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useState, useEffect } from "react"
 import { FadeContent, GlowBorder } from "@/components/react-bits"
 import { CoverImage } from "@/components/frontend/CoverImage"
 import { defaultNav } from "@/lib/nav-config"
-import { defaultPageCopy, defaultSiteName } from "@/lib/page-copy"
+import { defaultPageCopy, defaultSiteName, resolveFrontendSectionVisibility } from "@/lib/page-copy"
 import { useNavConfig } from "@/hooks/useNavConfig"
 import { coverRatioToCss } from "@/lib/cover-ratio"
+import { getDictionary } from "@/locales"
+import { t } from "@/lib/i18n"
+import { withLocalePath } from "@/lib/i18n-path"
 
 type Tutorial = {
   id: string
@@ -105,7 +109,10 @@ function TutorialExpandCard({ item, embedUrl, moduleCoverRatio }: { item: Tutori
 }
 
 export default function TutorialsPage() {
-  const { nav, pageCopy, siteName } = useNavConfig()
+  const router = useRouter()
+  const { nav, pageCopy, siteName, locale } = useNavConfig()
+  const dict = getDictionary(locale)
+  const sectionVisibility = resolveFrontendSectionVisibility(pageCopy)
   const sectionLabel = nav.tutorials ?? defaultNav.tutorials ?? ""
   const sectionDesc = pageCopy.tutorialsDesc ?? defaultPageCopy.tutorialsDesc ?? ""
   const moduleCoverRatio = pageCopy.coverRatioTutorials
@@ -113,12 +120,20 @@ export default function TutorialsPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/tutorials")
+    fetch(`/api/tutorials?locale=${locale}`)
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setList(Array.isArray(data) ? data : []))
       .catch(() => setList([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [locale])
+
+  useEffect(() => {
+    if (!sectionVisibility.tutorials) {
+      router.replace(withLocalePath("/", locale))
+    }
+  }, [locale, router, sectionVisibility.tutorials])
+
+  if (!sectionVisibility.tutorials) return null
 
   return (
     <div className="min-h-screen px-6 md:px-12 lg:px-16 py-12 pb-28 lg:pb-16">
@@ -160,7 +175,7 @@ export default function TutorialsPage() {
           ))}
         </div>
       ) : list.length === 0 ? (
-        <div className="text-muted-foreground py-12">暂无{sectionLabel}</div>
+        <div className="text-muted-foreground py-12">{t(dict, "common.empty_prefix", "暂无")}{sectionLabel}</div>
       ) : (
         <>
           {/* 瀑布流卡片列表 */}
@@ -207,7 +222,7 @@ export default function TutorialsPage() {
                               </div>
                             )}
                             <span className="text-xs text-muted-foreground/70 flex items-center gap-1 mt-2">
-                              <i className="ri-external-link-line" /> 前往观看
+                              <i className="ri-external-link-line" /> {t(dict, "frontend.go_watch", "前往观看")}
                             </span>
                           </div>
                         </GlowBorder>

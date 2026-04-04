@@ -3,12 +3,20 @@ import prisma from "@/lib/prisma"
 export type SettingsRow = {
   id: string
   siteName: string
+  defaultLocale: "ZH" | "EN"
   avatar: string | null
   socialLinks: unknown
   about: unknown
   nav: unknown
+  navI18n: unknown
   pageCopy: unknown
+  pageCopyI18n: unknown
+  aiAssistant: unknown
+  aiAssistantI18n: unknown
+  aiModelConfig: unknown
   theme: unknown
+  footer: unknown
+  footerI18n: unknown
   updatedAt: Date
 }
 

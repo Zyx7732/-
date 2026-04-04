@@ -24,6 +24,7 @@ import { CoverImageUpload } from "@/components/admin/CoverImageUpload"
 import { MiniEditor } from "@/components/admin/MiniEditor"
 import { CategoryCombobox } from "@/components/admin/CategoryCombobox"
 import { TagCombobox } from "@/components/admin/TagCombobox"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 import { getInitialContentForEditor } from "@/lib/content-format"
 import { compressImageToDataUrl } from "@/lib/avatar-compress"
 import {
@@ -57,12 +58,18 @@ type VersionItem = {
 }
 
 export default function EditWorkPage() {
+  const { locale } = useAdminUiLocale()
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
+  const [contentLocale, setContentLocale] = useState<"zh" | "en">(locale === "en" ? "en" : "zh")
   const router = useRouter()
   const params = useParams()
   const id = params?.id as string
   const [title, setTitle] = useState("")
+  const [titleEn, setTitleEn] = useState("")
   const [slug, setSlug] = useState("")
+  const [slugEn, setSlugEn] = useState("")
   const [description, setDescription] = useState("")
+  const [descriptionEn, setDescriptionEn] = useState("")
   const [content, setContent] = useState<Block[] | null>(null)
   const [coverImage, setCoverImage] = useState("")
   const [figmaUrl, setFigmaUrl] = useState("")
@@ -104,10 +111,13 @@ export default function EditWorkPage() {
       .then(async (work) => {
         setDeliveryRedacted(!!work._deliveryRedacted)
         setTitle(work.title ?? "")
+        setTitleEn(work.titleI18n?.en ?? "")
         setSlug(work.slug ?? "")
+        setSlugEn(work.slugI18n?.en ?? "")
         setOriginalSlug(work.slug ?? "")
         setWorkType(work.workType === "DEVELOPMENT" ? "DEVELOPMENT" : "DESIGN")
         setDescription(work.description ?? "")
+        setDescriptionEn(work.descriptionI18n?.en ?? "")
         setContent(getInitialContentForEditor(work.content))
         setCoverImage(work.coverImage ?? "")
         setFigmaUrl(work.figmaUrl ?? "")
@@ -145,6 +155,10 @@ export default function EditWorkPage() {
   }, [id])
 
   useEffect(() => {
+    setContentLocale(locale === "en" ? "en" : "zh")
+  }, [locale])
+
+  useEffect(() => {
     fetch("/api/settings", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -169,12 +183,12 @@ export default function EditWorkPage() {
 
   async function handlePublishVersion() {
     if (!newVer.version.trim()) {
-      toast.error("请填写版本号")
+      toast.error(t("请填写版本号", "Please enter version number"))
       return
     }
     const versionPrice = isFree ? 0 : parseFloat(newVer.price)
     if (!isFree && (isNaN(versionPrice) || !newVer.price.trim())) {
-      toast.error("请填写有效的价格")
+      toast.error(t("请填写有效的价格", "Please enter a valid price"))
       return
     }
     setPublishingVersion(true)
@@ -193,7 +207,7 @@ export default function EditWorkPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error || "发布版本失败")
+        toast.error(data.error || t("发布版本失败", "Failed to publish version"))
         return
       }
       // 更新状态
@@ -204,9 +218,9 @@ export default function EditWorkPage() {
       if (data.deliveryUrl) setDeliveryUrl(data.deliveryUrl)
       setShowNewVersion(false)
       setNewVer({ version: "", price: "", changelog: "", figmaUrl: "", deliveryUrl: "" })
-      toast.success("版本已发布")
+      toast.success(t("版本已发布", "Version published"))
     } catch {
-      toast.error("网络错误，请重试")
+      toast.error(t("网络错误，请重试", "Network error, please try again"))
     } finally {
       setPublishingVersion(false)
     }
@@ -225,7 +239,7 @@ export default function EditWorkPage() {
   async function handleUpdateVersion(versionId: string) {
     const versionPrice = isFree ? 0 : parseFloat(editVer.price)
     if (!isFree && (isNaN(versionPrice) || !editVer.price.trim())) {
-      toast.error("请填写有效的价格")
+      toast.error(t("请填写有效的价格", "Please enter a valid price"))
       return
     }
     setSavingVersion(true)
@@ -243,7 +257,7 @@ export default function EditWorkPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error || "更新失败")
+        toast.error(data.error || t("更新失败", "Update failed"))
         return
       }
       setVersions((prev) => prev.map((v) => (v.id === versionId ? data : v)))
@@ -254,9 +268,9 @@ export default function EditWorkPage() {
         if (data.deliveryUrl !== undefined) setDeliveryUrl(data.deliveryUrl ?? "")
       }
       setEditingVersionId(null)
-      toast.success("版本已更新")
+      toast.success(t("版本已更新", "Version updated"))
     } catch {
-      toast.error("网络错误，请重试")
+      toast.error(t("网络错误，请重试", "Network error, please try again"))
     } finally {
       setSavingVersion(false)
     }
@@ -271,7 +285,7 @@ export default function EditWorkPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error || "删除失败")
+        toast.error(data.error || t("删除失败", "Delete failed"))
         return
       }
       const deleted = versions.find((v) => v.id === versionId)
@@ -294,9 +308,9 @@ export default function EditWorkPage() {
         }
       }
       setConfirmDeleteId(null)
-      toast.success("版本已删除")
+      toast.success(t("版本已删除", "Version deleted"))
     } catch {
-      toast.error("网络错误，请重试")
+      toast.error(t("网络错误，请重试", "Network error, please try again"))
     } finally {
       setDeletingVersionId(null)
     }
@@ -304,7 +318,7 @@ export default function EditWorkPage() {
 
   async function handleSave(status: "DRAFT" | "PUBLISHED") {
     if (!title.trim() || !slug.trim()) {
-      toast.error("请填写作品名称和 slug")
+      toast.error(t("请填写作品名称和 slug", "Please fill work title and slug"))
       return
     }
     setSaving(true)
@@ -329,11 +343,23 @@ export default function EditWorkPage() {
           status,
           categoryId: categoryId || null,
           tagIds,
+          titleI18n: {
+            zh: title.trim(),
+            en: titleEn.trim() || undefined,
+          },
+          slugI18n: {
+            zh: slug.trim(),
+            en: slugEn.trim() || undefined,
+          },
+          descriptionI18n: {
+            zh: description.trim() || undefined,
+            en: descriptionEn.trim() || undefined,
+          },
         }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        toast.error(data.error || "保存失败")
+        toast.error(data.error || t("保存失败", "Save failed"))
         return
       }
       const listPath = workType === "DEVELOPMENT"
@@ -349,7 +375,7 @@ export default function EditWorkPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12 text-muted-foreground">
-        加载中…
+        {t("加载中…", "Loading…")}
       </div>
     )
   }
@@ -360,28 +386,44 @@ export default function EditWorkPage() {
       <div className="sticky top-0 z-10 -mx-6 md:-mx-8 lg:-mx-12 -mt-8 px-6 md:px-8 lg:px-12 bg-background/95 backdrop-blur-sm border-b border-border/40">
         <div className="flex items-center justify-between py-3">
           <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
-            编辑作品
+            {t("编辑作品", "Edit Work")}
           </h1>
           <div className="flex items-center gap-2">
+            <div className="inline-flex items-center rounded-lg border border-border/70 p-1">
+              <button
+                type="button"
+                className={`rounded-md px-3 py-1.5 text-xs ${contentLocale === "zh" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}
+                onClick={() => setContentLocale("zh")}
+              >
+                中文
+              </button>
+              <button
+                type="button"
+                className={`rounded-md px-3 py-1.5 text-xs ${contentLocale === "en" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}
+                onClick={() => setContentLocale("en")}
+              >
+                English
+              </button>
+            </div>
             <Button variant="outline" asChild>
-              <Link href={workType === "DEVELOPMENT" ? "/admin/works/development" : "/admin/works/design"}>取消</Link>
+              <Link href={workType === "DEVELOPMENT" ? "/admin/works/development" : "/admin/works/design"}>{t("取消", "Cancel")}</Link>
             </Button>
             <Button variant="secondary" onClick={() => handleSave("DRAFT")} disabled={saving}>
-              {saving ? "保存中…" : "保存草稿"}
+              {saving ? t("保存中…", "Saving…") : t("保存草稿", "Save Draft")}
             </Button>
             <Button onClick={() => handleSave("PUBLISHED")} disabled={saving}>
-              {saving ? "发布中…" : currentStatus === "PUBLISHED" ? "更新发布" : "发布"}
+              {saving ? t("发布中…", "Publishing…") : currentStatus === "PUBLISHED" ? t("更新发布", "Update Published") : t("发布", "Publish")}
             </Button>
           </div>
         </div>
         <TabsList variant="line" className="w-full justify-start">
-          <TabsTrigger value="basic">基本信息</TabsTrigger>
-          <TabsTrigger value="content">详细内容</TabsTrigger>
+          <TabsTrigger value="basic">{t("基本信息", "Basic Info")}</TabsTrigger>
+          <TabsTrigger value="content">{t("详细内容", "Details")}</TabsTrigger>
           {workType === "DESIGN" && (
-            <TabsTrigger value="versions">定价 & 版本</TabsTrigger>
+            <TabsTrigger value="versions">{t("定价 & 版本", "Pricing & Versions")}</TabsTrigger>
           )}
           {workType === "DEVELOPMENT" && (
-            <TabsTrigger value="demo">在线体验</TabsTrigger>
+            <TabsTrigger value="demo">{t("在线体验", "Live Demo")}</TabsTrigger>
           )}
         </TabsList>
       </div>
@@ -393,51 +435,59 @@ export default function EditWorkPage() {
             <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm">
               <CardContent className="space-y-4 pt-6">
                 <div className="space-y-2">
-                  <Label htmlFor="title">作品名称</Label>
+                  <Label htmlFor="title">{t("作品名称", "Work Title")}</Label>
                   <Input
                     id="title"
-                    value={title}
+                    value={contentLocale === "en" ? titleEn : title}
                     onChange={(e) => {
                       const newTitle = e.target.value
-                      setTitle(newTitle)
-                      if (/^draft-\d+$/.test(slug) && newTitle.trim()) {
-                        setSlug(titleToSlug(newTitle))
+                      if (contentLocale === "en") {
+                        setTitleEn(newTitle)
+                        if (/^draft-\d+$/.test(slugEn) && newTitle.trim()) {
+                          setSlugEn(titleToSlug(newTitle))
+                        }
+                      } else {
+                        setTitle(newTitle)
+                        if (/^draft-\d+$/.test(slug) && newTitle.trim()) {
+                          setSlug(titleToSlug(newTitle))
+                        }
                       }
                     }}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="slug">URL 别名（slug）</Label>
+                  <Label htmlFor="slug">{t("URL 别名（slug）", "URL Slug")}</Label>
                   <Input
                     id="slug"
-                    placeholder="如 ios-weather-app"
-                    value={slug}
+                    placeholder={t("如 ios-weather-app", "e.g. ios-weather-app")}
+                    value={contentLocale === "en" ? slugEn : slug}
                     onChange={(e) => {
                       const filtered = e.target.value
                         .toLowerCase()
                         .replace(/[^a-z0-9-]+/g, "-")
                         .replace(/-+/g, "-")
                         .replace(/^-/, "")
-                      setSlug(filtered)
+                      if (contentLocale === "en") setSlugEn(filtered)
+                      else setSlug(filtered)
                     }}
                   />
                   <p className="text-xs text-muted-foreground">
-                    仅支持小写英文、数字和短横线
-                    {slug && (
-                      <> · 前台地址：<span className="font-mono text-foreground/70">/works/{slug}</span></>
+                    {t("仅支持小写英文、数字和短横线", "Only lowercase letters, numbers and hyphens are allowed")}
+                    {(contentLocale === "en" ? slugEn : slug) && (
+                      <> · {t("前台地址：", "Public URL: ")}<span className="font-mono text-foreground/70">/works/{contentLocale === "en" ? slugEn : slug}</span></>
                     )}
                   </p>
                   {currentStatus === "PUBLISHED" && slug !== originalSlug && (
                     <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/20">
                       <i className="ri-alert-line text-amber-500 shrink-0" />
                       <p className="text-xs text-amber-600 dark:text-amber-400">
-                        修改已发布作品的 URL 别名会导致旧链接失效，请谨慎操作。
+                        {t("修改已发布作品的 URL 别名会导致旧链接失效，请谨慎操作。", "Changing the slug of a published work may break old links.")}
                       </p>
                     </div>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>类型</Label>
+                  <Label>{t("类型", "Type")}</Label>
                   <Select
                     value={workType}
                     onValueChange={(v) => setWorkType(v as "DESIGN" | "DEVELOPMENT")}
@@ -446,24 +496,24 @@ export default function EditWorkPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="DESIGN">设计作品</SelectItem>
-                      <SelectItem value="DEVELOPMENT">开发作品</SelectItem>
+                      <SelectItem value="DESIGN">{t("设计作品", "Design Work")}</SelectItem>
+                      <SelectItem value="DEVELOPMENT">{t("开发作品", "Development Work")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>作品描述</Label>
+                  <Label>{t("作品描述", "Description")}</Label>
                   <MiniEditor
-                    value={description}
-                    onChange={setDescription}
-                    placeholder="简要描述作品亮点、适用场景等..."
+                    value={contentLocale === "en" ? descriptionEn : description}
+                    onChange={contentLocale === "en" ? setDescriptionEn : setDescription}
+                    placeholder={t("简要描述作品亮点、适用场景等...", "Briefly describe highlights and use cases...")}
                     minHeight="min-h-[100px]"
                   />
                 </div>
                 <Separator />
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>分类</Label>
+                    <Label>{t("分类", "Category")}</Label>
                     <CategoryCombobox
                       type={workType}
                       value={categoryId}
@@ -471,7 +521,7 @@ export default function EditWorkPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>标签</Label>
+                    <Label>{t("标签", "Tags")}</Label>
                     <TagCombobox
                       value={tagIds}
                       onChange={setTagIds}
@@ -483,7 +533,7 @@ export default function EditWorkPage() {
           </div>
           <div>
             <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm">
-              <CardHeader><CardTitle>封面图</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t("封面图", "Cover Image")}</CardTitle></CardHeader>
               <CardContent>
                 <CoverImageUpload
                   value={coverImage}
@@ -504,7 +554,7 @@ export default function EditWorkPage() {
         <Editor
           value={content}
           onChange={setContent}
-          placeholder="可填写作品详细介绍、排版与链接…"
+          placeholder={t("可填写作品详细介绍、排版与链接…", "Write detailed intro, layout and links...")}
           minHeight="calc(100dvh - 156px)"
           entityType={workType === "DESIGN" ? "WORK_DESIGN" : "WORK_DEVELOPMENT"}
           entityId={id}
@@ -515,10 +565,10 @@ export default function EditWorkPage() {
       {workType === "DEVELOPMENT" && (
         <TabsContent value="demo" className="pt-6 max-w-2xl">
           <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm">
-            <CardHeader><CardTitle>在线体验</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("在线体验", "Live Demo")}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="demoUrl">体验链接</Label>
+                <Label htmlFor="demoUrl">{t("体验链接", "Demo URL")}</Label>
                 <Input
                   id="demoUrl"
                   placeholder="https://demo.example.com"
@@ -526,17 +576,17 @@ export default function EditWorkPage() {
                   onChange={(e) => setDemoUrl(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  填写可直接访问的在线演示地址，前台将显示“在线体验”按钮。
+                  {t("填写可直接访问的在线演示地址，前台将显示“在线体验”按钮。", "Provide a public demo URL; frontend will show a \"Live Demo\" button.")}
                 </p>
               </div>
               <Separator />
               <div className="space-y-2">
-                <Label>扫码体验</Label>
+                <Label>{t("扫码体验", "QR Demo")}</Label>
                 {demoQrCode ? (
                   <div className="flex items-center gap-3">
                     <img
                       src={demoQrCode}
-                      alt="体验二维码"
+                      alt={t("体验二维码", "Demo QR code")}
                       className="w-20 h-20 rounded-lg border border-border object-contain bg-white"
                     />
                     <div className="flex flex-col gap-1.5">
@@ -553,12 +603,12 @@ export default function EditWorkPage() {
                             if (!file) return
                             compressImageToDataUrl(file)
                               .then((dataUrl) => setDemoQrCode(dataUrl))
-                              .catch(() => toast.error("图片压缩失败"))
+                              .catch(() => toast.error(t("图片压缩失败", "Image compression failed")))
                           }
                           input.click()
                         }}
                       >
-                        更换
+                        {t("更换", "Replace")}
                       </Button>
                       <Button
                         type="button"
@@ -567,7 +617,7 @@ export default function EditWorkPage() {
                         className="text-destructive hover:text-destructive"
                         onClick={() => setDemoQrCode("")}
                       >
-                        移除
+                        {t("移除", "Remove")}
                       </Button>
                     </div>
                   </div>
@@ -586,16 +636,16 @@ export default function EditWorkPage() {
                           if (!file) return
                           compressImageToDataUrl(file)
                             .then((dataUrl) => setDemoQrCode(dataUrl))
-                            .catch(() => toast.error("图片压缩失败"))
+                            .catch(() => toast.error(t("图片压缩失败", "Image compression failed")))
                         }
                         input.click()
                       }}
                     >
                       <i className="ri-qr-code-line mr-1.5" />
-                      上传二维码
+                      {t("上传二维码", "Upload QR")}
                     </Button>
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      支持微信小程序码、App 下载码等，前台将以悬浮预览展示。
+                      {t("支持微信小程序码、App 下载码等，前台将以悬浮预览展示。", "Supports mini-program/app download QR; frontend displays hover preview.")}
                     </p>
                   </div>
                 )}
@@ -612,10 +662,10 @@ export default function EditWorkPage() {
             {/* 左侧：当前定价（展示） */}
             <div>
               <Card className="rounded-2xl border-primary/20 bg-background backdrop-blur-sm">
-                <CardHeader><CardTitle>当前定价</CardTitle></CardHeader>
+                <CardHeader><CardTitle>{t("当前定价", "Current Pricing")}</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="free">开源作品</Label>
+                    <Label htmlFor="free">{t("开源作品", "Open Source")}</Label>
                     <Switch id="free" checked={isFree} onCheckedChange={setIsFree} />
                   </div>
                   <div>
@@ -624,7 +674,7 @@ export default function EditWorkPage() {
                       {isFree ? "0" : (price || "—")}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      {isFree ? "开源作品" : "跟随最新版本价格"}
+                      {isFree ? t("开源作品", "Open Source") : t("跟随最新版本价格", "Follow latest version price")}
                     </p>
                   </div>
                 </CardContent>
@@ -636,10 +686,10 @@ export default function EditWorkPage() {
               <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>
-                    版本管理
+                    {t("版本管理", "Version Management")}
                     {currentVersion && (
                       <span className="ml-2 text-sm font-normal text-muted-foreground">
-                        当前 V{currentVersion}
+                        {t("当前", "Current")} V{currentVersion}
                       </span>
                     )}
                   </CardTitle>
@@ -660,7 +710,7 @@ export default function EditWorkPage() {
                       }}
                     >
                       <i className="ri-add-line mr-1" />
-                      发布新版本
+                      {t("发布新版本", "Publish New Version")}
                     </Button>
                   )}
                 </CardHeader>
@@ -668,28 +718,28 @@ export default function EditWorkPage() {
                   <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/20 -mt-1">
                     <i className="ri-information-line text-amber-500 shrink-0" />
                     <p className="text-xs text-amber-600 dark:text-amber-400">
-                      每个版本需包含至少一个交付链接（Figma 或自定义链接），否则前台将显示“仅供预览”。
+                      {t("每个版本需包含至少一个交付链接（Figma 或自定义链接），否则前台将显示“仅供预览”。", "Each version should include at least one delivery link (Figma/custom), otherwise frontend shows preview-only.")}
                     </p>
                   </div>
                   {(showNewVersion || versions.length === 0) && (
                     <div className="space-y-3 p-4 rounded-xl border border-border/50">
                       <p className="text-sm font-medium text-foreground">
-                        {versions.length === 0 ? "创建首个版本" : "发布新版本"}
+                        {versions.length === 0 ? t("创建首个版本", "Create First Version") : t("发布新版本", "Publish New Version")}
                       </p>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <Label className="text-xs">版本号 *</Label>
+                          <Label className="text-xs">{t("版本号", "Version")} *</Label>
                           <Input
-                            placeholder="如 2.0"
+                            placeholder={t("如 2.0", "e.g. 2.0")}
                             value={newVer.version}
                             onChange={(e) => setNewVer((p) => ({ ...p, version: e.target.value }))}
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-xs">版本价格（元）{!isFree && " *"}</Label>
+                          <Label className="text-xs">{t("版本价格（元）", "Version Price (CNY)")}{!isFree && " *"}</Label>
                           <Input
                             type="number"
-                            placeholder={isFree ? "开源" : "如 199"}
+                            placeholder={isFree ? t("开源", "Open Source") : t("如 199", "e.g. 199")}
                             value={isFree ? "0" : newVer.price}
                             disabled={isFree}
                             onChange={(e) => setNewVer((p) => ({ ...p, price: e.target.value }))}
@@ -697,42 +747,42 @@ export default function EditWorkPage() {
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">Figma 链接</Label>
+                        <Label className="text-xs">{t("Figma 链接", "Figma URL")}</Label>
                         <Input
                           placeholder="https://www.figma.com/..."
                           value={newVer.figmaUrl}
                           onChange={(e) => setNewVer((p) => ({ ...p, figmaUrl: e.target.value }))}
                         />
                         {versions.length > 0 && (
-                          <p className="text-[11px] text-muted-foreground/70">留空将继承上一版本</p>
+                          <p className="text-[11px] text-muted-foreground/70">{t("留空将继承上一版本", "Leave blank to inherit previous version")}</p>
                         )}
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">自定义链接</Label>
+                        <Label className="text-xs">{t("自定义链接", "Custom URL")}</Label>
                         <Input
-                          placeholder="GitHub、网盘、飞书链接等"
+                          placeholder={t("GitHub、网盘、飞书链接等", "GitHub / cloud drive / Feishu links")}
                           value={newVer.deliveryUrl}
                           onChange={(e) => setNewVer((p) => ({ ...p, deliveryUrl: e.target.value }))}
                         />
                         {versions.length > 0 && (
-                          <p className="text-[11px] text-muted-foreground/70">留空将继承上一版本</p>
+                          <p className="text-[11px] text-muted-foreground/70">{t("留空将继承上一版本", "Leave blank to inherit previous version")}</p>
                         )}
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">更新说明</Label>
+                        <Label className="text-xs">{t("更新说明", "Changelog")}</Label>
                         <MiniEditor
                           value={newVer.changelog}
                           onChange={(html) => setNewVer((p) => ({ ...p, changelog: html }))}
-                          placeholder="描述本版本的更新内容…"
+                          placeholder={t("描述本版本的更新内容…", "Describe changes in this version...")}
                           minHeight="min-h-[80px]"
                         />
                       </div>
                       <div className="flex items-center gap-2 pt-1">
                         <Button type="button" size="sm" disabled={publishingVersion || (!newVer.figmaUrl.trim() && !newVer.deliveryUrl.trim())} onClick={handlePublishVersion}>
-                          {publishingVersion ? "保存中…" : "保存版本"}
+                          {publishingVersion ? t("保存中…", "Saving…") : t("保存版本", "Save Version")}
                         </Button>
                         <Button type="button" variant="ghost" size="sm" onClick={() => setShowNewVersion(false)}>
-                          取消
+                          {t("取消", "Cancel")}
                         </Button>
                       </div>
                     </div>
@@ -745,44 +795,44 @@ export default function EditWorkPage() {
                             <div className="p-3 space-y-3">
                               <div className="flex items-center gap-2 mb-1">
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">V{v.version}</span>
-                                <span className="text-xs text-muted-foreground">编辑中</span>
+                                <span className="text-xs text-muted-foreground">{t("编辑中", "Editing")}</span>
                               </div>
                               <div className="space-y-2">
                                 <div className="space-y-1">
-                                  <Label className="text-xs">版本价格（元）</Label>
-                                  <Input type="number" placeholder="如 199" value={isFree ? "0" : editVer.price} disabled={isFree} onChange={(e) => setEditVer((p) => ({ ...p, price: e.target.value }))} />
+                                  <Label className="text-xs">{t("版本价格（元）", "Version Price (CNY)")}</Label>
+                                  <Input type="number" placeholder={t("如 199", "e.g. 199")} value={isFree ? "0" : editVer.price} disabled={isFree} onChange={(e) => setEditVer((p) => ({ ...p, price: e.target.value }))} />
                                 </div>
                                 <div className="space-y-1">
-                                  <Label className="text-xs">Figma 链接</Label>
+                                  <Label className="text-xs">{t("Figma 链接", "Figma URL")}</Label>
                                   <Input placeholder="https://www.figma.com/..." value={editVer.figmaUrl} onChange={(e) => setEditVer((p) => ({ ...p, figmaUrl: e.target.value }))} />
                                 </div>
                                 <div className="space-y-1">
-                                  <Label className="text-xs">自定义链接</Label>
-                                  <Input placeholder="GitHub、网盘、飞书链接等" value={editVer.deliveryUrl} onChange={(e) => setEditVer((p) => ({ ...p, deliveryUrl: e.target.value }))} />
+                                  <Label className="text-xs">{t("自定义链接", "Custom URL")}</Label>
+                                  <Input placeholder={t("GitHub、网盘、飞书链接等", "GitHub / cloud drive / Feishu links")} value={editVer.deliveryUrl} onChange={(e) => setEditVer((p) => ({ ...p, deliveryUrl: e.target.value }))} />
                                 </div>
                               </div>
                               <div className="space-y-1">
-                                <Label className="text-xs">更新说明</Label>
-                                <MiniEditor value={editVer.changelog} onChange={(html) => setEditVer((p) => ({ ...p, changelog: html }))} placeholder="描述本版本的更新内容…" minHeight="min-h-[80px]" />
+                                <Label className="text-xs">{t("更新说明", "Changelog")}</Label>
+                                <MiniEditor value={editVer.changelog} onChange={(html) => setEditVer((p) => ({ ...p, changelog: html }))} placeholder={t("描述本版本的更新内容…", "Describe changes in this version...")} minHeight="min-h-[80px]" />
                               </div>
                               <div className="flex items-center gap-2">
                                 <Button type="button" size="sm" disabled={savingVersion || (!editVer.figmaUrl.trim() && !editVer.deliveryUrl.trim())} onClick={() => handleUpdateVersion(v.id)}>
-                                  {savingVersion ? "保存中…" : "保存"}
+                                  {savingVersion ? t("保存中…", "Saving…") : t("保存", "Save")}
                                 </Button>
-                                <Button type="button" variant="ghost" size="sm" onClick={() => setEditingVersionId(null)}>取消</Button>
+                                <Button type="button" variant="ghost" size="sm" onClick={() => setEditingVersionId(null)}>{t("取消", "Cancel")}</Button>
                               </div>
                             </div>
                           ) : confirmDeleteId === v.id ? (
                             <div className="p-3 space-y-3">
                               <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                                 <i className="ri-error-warning-line text-destructive" />
-                                <p className="text-sm text-destructive">确定删除版本 V{v.version} 吗？此操作不可撤销。</p>
+                                <p className="text-sm text-destructive">{t(`确定删除版本 V${v.version} 吗？此操作不可撤销。`, `Delete version V${v.version}? This action cannot be undone.`)}</p>
                               </div>
                               <div className="flex items-center gap-2">
                                 <Button type="button" variant="destructive" size="sm" disabled={deletingVersionId === v.id} onClick={() => handleDeleteVersion(v.id)}>
-                                  {deletingVersionId === v.id ? "删除中…" : "确认删除"}
+                                  {deletingVersionId === v.id ? t("删除中…", "Deleting…") : t("确认删除", "Confirm Delete")}
                                 </Button>
-                                <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmDeleteId(null)}>取消</Button>
+                                <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmDeleteId(null)}>{t("取消", "Cancel")}</Button>
                               </div>
                             </div>
                           ) : (
@@ -794,17 +844,17 @@ export default function EditWorkPage() {
                                 <div className="flex items-center gap-2 text-sm flex-wrap">
                                   <span className="font-medium">¥{v.price}</span>
                                   {deliveryRedacted ? (
-                                    <span className="text-xs text-muted-foreground">无权限查看交付链接</span>
+                                    <span className="text-xs text-muted-foreground">{t("无权限查看交付链接", "No permission to view delivery links")}</span>
                                   ) : (
                                     <>
                                       {v.figmaUrl && (
-                                        <button type="button" className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer" title={`复制: ${v.figmaUrl}`} onClick={() => { navigator.clipboard.writeText(v.figmaUrl!); toast.success("Figma 链接已复制") }}>
+                                        <button type="button" className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer" title={`${t("复制", "Copy")}: ${v.figmaUrl}`} onClick={() => { navigator.clipboard.writeText(v.figmaUrl!); toast.success(t("Figma 链接已复制", "Figma URL copied")) }}>
                                           <i className="ri-figma-line" />Figma<i className="ri-file-copy-line text-[10px] opacity-60" />
                                         </button>
                                       )}
                                       {v.deliveryUrl && (
-                                        <button type="button" className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer" title={`复制: ${v.deliveryUrl}`} onClick={() => { navigator.clipboard.writeText(v.deliveryUrl!); toast.success("自定义链接已复制") }}>
-                                          <i className="ri-links-line" />自定义<i className="ri-file-copy-line text-[10px] opacity-60" />
+                                        <button type="button" className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer" title={`${t("复制", "Copy")}: ${v.deliveryUrl}`} onClick={() => { navigator.clipboard.writeText(v.deliveryUrl!); toast.success(t("自定义链接已复制", "Custom URL copied")) }}>
+                                          <i className="ri-links-line" />{t("自定义", "Custom")}<i className="ri-file-copy-line text-[10px] opacity-60" />
                                         </button>
                                       )}
                                     </>
@@ -819,10 +869,10 @@ export default function EditWorkPage() {
                                 <p className="text-xs text-muted-foreground/60">{new Date(v.createdAt).toLocaleDateString("zh-CN")}</p>
                               </div>
                               <div className="flex items-center gap-0.5 flex-shrink-0">
-                                <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title="编辑" onClick={() => startEditVersion(v)}>
+                                <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title={t("编辑", "Edit")} onClick={() => startEditVersion(v)}>
                                   <i className="ri-pencil-line text-sm" />
                                 </Button>
-                                <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" title="删除" onClick={() => setConfirmDeleteId(v.id)}>
+                                <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" title={t("删除", "Delete")} onClick={() => setConfirmDeleteId(v.id)}>
                                   <i className="ri-delete-bin-line text-sm" />
                                 </Button>
                               </div>
@@ -837,21 +887,21 @@ export default function EditWorkPage() {
 
               <Card className="rounded-2xl border-border/50 bg-card/50 backdrop-blur-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">交付链接</CardTitle>
+                  <CardTitle className="flex items-center gap-2">{t("交付链接", "Delivery Links")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-5">
                   {deliveryRedacted ? (
-                    <p className="text-sm text-muted-foreground py-2">无权限查看交付链接</p>
+                    <p className="text-sm text-muted-foreground py-2">{t("无权限查看交付链接", "No permission to view delivery links")}</p>
                   ) : (
                     <>
                       <div className="space-y-2">
-                        <Label className="flex items-center gap-1.5 text-muted-foreground"><i className="ri-figma-line text-base" />Figma 链接</Label>
-                        <Input disabled value={figmaUrl} placeholder="根据最新版本自动继承" />
+                        <Label className="flex items-center gap-1.5 text-muted-foreground"><i className="ri-figma-line text-base" />{t("Figma 链接", "Figma URL")}</Label>
+                        <Input disabled value={figmaUrl} placeholder={t("根据最新版本自动继承", "Inherited from latest version")} />
                       </div>
                       <Separator />
                       <div className="space-y-2">
-                        <Label className="flex items-center gap-1.5 text-muted-foreground"><i className="ri-links-line text-base" />自定义链接</Label>
-                        <Input disabled value={deliveryUrl} placeholder="根据最新版本自动继承" />
+                        <Label className="flex items-center gap-1.5 text-muted-foreground"><i className="ri-links-line text-base" />{t("自定义链接", "Custom URL")}</Label>
+                        <Input disabled value={deliveryUrl} placeholder={t("根据最新版本自动继承", "Inherited from latest version")} />
                       </div>
                     </>
                   )}

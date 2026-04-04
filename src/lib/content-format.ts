@@ -92,6 +92,24 @@ export function htmlToPlainText(html: string | null | undefined): string {
     .trim()
 }
 
+/**
+ * 去掉 HTML 标签，但尽量保留段落/列表换行，适合聊天回答这类需要保留排版的文本。
+ */
+export function htmlToPlainTextWithBreaks(html: string | null | undefined): string {
+  if (html == null || typeof html !== "string") return ""
+  return html
+    .replace(/<(br|\/p|\/div|\/li|\/ul|\/ol)\s*\/?>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "- ")
+    .replace(/<p[^>]*>|<div[^>]*>|<ul[^>]*>|<ol[^>]*>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim()
+}
+
 /** 供后台富文本编辑器使用：BlockNote 格式返回原样，其他格式返回 null（编辑器会空白初始化）。 */
 export function getInitialContentForEditor(raw: unknown): Block[] | null {
   if (raw === undefined || raw === null) return null

@@ -13,6 +13,7 @@ import {
   CommandItem,
 } from "@/components/ui/command"
 import { cn } from "@/lib/utils"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 type CategoryItem = { id: string; name: string; slug: string }
 
@@ -32,9 +33,12 @@ export function CategoryCombobox({
   type,
   value,
   onChange,
-  placeholder = "选择分类",
+  placeholder,
   className,
 }: CategoryComboboxProps) {
+  const { locale } = useAdminUiLocale()
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
+  const placeholderText = placeholder ?? t("选择分类", "Select category")
   const [open, setOpen] = useState(false)
   const [categories, setCategories] = useState<CategoryItem[]>([])
   const [search, setSearch] = useState("")
@@ -66,7 +70,7 @@ export function CategoryCombobox({
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error || "创建分类失败")
+        toast.error(data.error || t("创建分类失败", "Failed to create category"))
         return
       }
       // 追加到列表并选中
@@ -74,9 +78,9 @@ export function CategoryCombobox({
       onChange(data.id)
       setSearch("")
       setOpen(false)
-      toast.success(`分类「${name}」已创建`)
+      toast.success(locale === "en" ? `Category "${name}" created` : `分类「${name}」已创建`)
     } catch {
-      toast.error("网络错误，请重试")
+      toast.error(t("网络错误，请重试", "Network error, please try again"))
     } finally {
       setCreating(false)
     }
@@ -100,14 +104,14 @@ export function CategoryCombobox({
             className
           )}
         >
-          <span className="truncate">{selectedName || placeholder}</span>
+          <span className="truncate">{selectedName || placeholderText}</span>
           <i className="ri-expand-up-down-line ml-2 shrink-0 text-muted-foreground text-sm" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command shouldFilter={true}>
           <CommandInput
-            placeholder="搜索或创建分类…"
+            placeholder={t("搜索或创建分类…", "Search or create category…")}
             value={search}
             onValueChange={setSearch}
           />
@@ -122,11 +126,11 @@ export function CategoryCombobox({
                 >
                   <i className="ri-add-line text-primary shrink-0" />
                   <span>
-                    {creating ? "创建中…" : <>创建「<span className="font-medium">{search.trim()}</span>」</>}
+                    {creating ? t("创建中…", "Creating…") : <>{t("创建「", "Create \"")}<span className="font-medium">{search.trim()}</span>{t("」", "\"")}</>}
                   </span>
                 </button>
               ) : (
-                <span className="text-muted-foreground">暂无分类</span>
+                <span className="text-muted-foreground">{t("暂无分类", "No categories")}</span>
               )}
             </CommandEmpty>
             <CommandGroup>
@@ -157,7 +161,7 @@ export function CategoryCombobox({
                   className="text-primary"
                 >
                   <i className="ri-add-line shrink-0" />
-                  {creating ? "创建中…" : <>创建「{search.trim()}」</>}
+                  {creating ? t("创建中…", "Creating…") : <>{t("创建「", "Create \"")}{search.trim()}{t("」", "\"")}</>}
                 </CommandItem>
               )}
             </CommandGroup>

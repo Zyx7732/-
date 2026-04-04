@@ -23,6 +23,7 @@ import {
   restrictToParentElement,
 } from "@dnd-kit/modifiers"
 import { TableBody, TableRow, TableCell } from "@/components/ui/table"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 type SortableItem = { id: string; sortOrder: number }
 const ActiveDragContext = createContext<string | null>(null)
@@ -94,8 +95,10 @@ export function SortableTableBody<T extends SortableItem>({
   items,
   children,
   columnCount,
-  emptyText = "暂无数据",
+  emptyText,
 }: SortableTableBodyProps<T>) {
+  const { locale } = useAdminUiLocale()
+  const emptyLabel = emptyText ?? (locale === "en" ? "No data" : "暂无数据")
   const ids = useMemo(() => items.map((i) => i.id), [items])
   const activeId = useContext(ActiveDragContext)
 
@@ -104,7 +107,7 @@ export function SortableTableBody<T extends SortableItem>({
       <TableBody>
         <TableRow>
           <TableCell colSpan={columnCount} className="text-center text-muted-foreground py-8">
-            {emptyText}
+            {emptyLabel}
           </TableCell>
         </TableRow>
       </TableBody>

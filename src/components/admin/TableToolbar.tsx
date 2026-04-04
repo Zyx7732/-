@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ConfirmPopover } from "@/components/admin/ConfirmPopover"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 export interface ToolbarFilter {
   key: string
@@ -48,7 +49,7 @@ interface TableToolbarProps {
 export function TableToolbar({
   searchValue,
   onSearchChange,
-  searchPlaceholder = "搜索…",
+  searchPlaceholder,
   filters = [],
   filterValues = {},
   onFilterChange,
@@ -57,7 +58,10 @@ export function TableToolbar({
   onClearSelection,
   extra,
 }: TableToolbarProps) {
+  const { locale } = useAdminUiLocale()
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
   const hasBatch = selectedCount > 0 && batchActions.length > 0
+  const placeholder = searchPlaceholder ?? t("搜索…", "Search…")
 
   return (
     <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -67,7 +71,7 @@ export function TableToolbar({
         <Input
           value={searchValue}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder={searchPlaceholder}
+          placeholder={placeholder}
           className="pl-9 h-9"
         />
       </div>
@@ -83,7 +87,7 @@ export function TableToolbar({
             <SelectValue placeholder={f.label} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">全部{f.label}</SelectItem>
+            <SelectItem value="all">{t("全部", "All")} {f.label}</SelectItem>
             {f.options.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
                 {opt.label}
@@ -97,7 +101,7 @@ export function TableToolbar({
       {hasBatch && (
         <div className="flex items-center gap-2 ml-auto">
           <span className="text-xs text-muted-foreground">
-            已选 {selectedCount} 项
+            {t("已选", "Selected")} {selectedCount} {t("项", "items")}
           </span>
           {batchActions.map((action) => {
             const btn = (
@@ -116,7 +120,7 @@ export function TableToolbar({
               return (
                 <ConfirmPopover
                   key={action.label}
-                  title={action.confirmTitle || `确定${action.label}？`}
+                  title={action.confirmTitle || t(`确定${action.label}？`, `Confirm ${action.label}?`)}
                   description={action.confirmDescription}
                   confirmText={action.label}
                   variant={action.variant === "destructive" ? "destructive" : "default"}
@@ -135,7 +139,7 @@ export function TableToolbar({
             className="h-8 text-xs"
             onClick={onClearSelection}
           >
-            取消选择
+            {t("取消选择", "Clear")}
           </Button>
         </div>
       )}

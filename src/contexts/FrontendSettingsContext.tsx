@@ -17,7 +17,7 @@ export function FrontendSettingsProvider({
   const [value, setValue] = useState<FrontendSettings>(initial)
 
   useEffect(() => {
-    fetch("/api/settings")
+    fetch(`/api/settings?locale=${value.locale}`)
       .then((r) => r.json())
       .then((data) => {
         const n = data.nav
@@ -35,7 +35,7 @@ export function FrontendSettingsProvider({
         }))
       })
       .catch(() => {})
-  }, [])
+  }, [value.locale])
 
   const memo = useMemo(() => value, [value])
   return (

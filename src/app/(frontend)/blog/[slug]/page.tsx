@@ -8,6 +8,8 @@ import { contentToHtml, jsonToPlainText } from "@/lib/render-content"
 import { defaultNav } from "@/lib/nav-config"
 import { defaultPersonalName, defaultSiteName } from "@/lib/page-copy"
 import { ProseImageLightbox } from "@/components/frontend/ProseImageLightbox"
+import { getDictionary } from "@/locales"
+import { normalizeLocale, t } from "@/lib/i18n"
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>
@@ -23,16 +25,19 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   if (!postRes.ok) notFound()
   const post = await postRes.json()
   const settings = settingsRes.ok ? await settingsRes.json() : {}
+  const locale = normalizeLocale(settings.locale)
+  const dict = getDictionary(locale)
   const nav = { ...defaultNav, ...(settings.nav && typeof settings.nav === "object" ? settings.nav : {}) }
   const sectionLabel = nav.blog ?? defaultNav.blog
 
   const contentHtml = contentToHtml(post.content)
   const bodyPlain = jsonToPlainText(post.content)
   const categoryName = post.category?.name ?? ""
+  const dateLocale = locale === "en" ? "en-US" : "zh-CN"
   const publishedAt = post.publishedAt
-    ? new Date(post.publishedAt).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" })
+    ? new Date(post.publishedAt).toLocaleDateString(dateLocale, { year: "numeric", month: "2-digit", day: "2-digit" })
     : post.createdAt
-      ? new Date(post.createdAt).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" })
+      ? new Date(post.createdAt).toLocaleDateString(dateLocale, { year: "numeric", month: "2-digit", day: "2-digit" })
       : ""
 
   // 从后台 Settings 获取作者信息（头像、名称、职位）
@@ -84,6 +89,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <div className="w-10 h-10 rounded-full overflow-hidden border border-border relative">
               <Image
                 src={authorAvatar}
+                unoptimized
                 alt={authorName}
                 fill
                 className="object-cover"
@@ -143,7 +149,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             href="/blog"
             className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 pride-underline"
           >
-            <i className="ri-arrow-left-line" /> 返回文章列表
+            <i className="ri-arrow-left-line" /> {t(dict, "frontend.back_to_blog", "返回文章列表")}
           </Link>
         </div>
       </article>

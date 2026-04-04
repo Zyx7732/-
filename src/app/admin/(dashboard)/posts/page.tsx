@@ -22,6 +22,7 @@ import { TableToolbar, type ToolbarFilter, type BatchAction } from "@/components
 import { TablePagination } from "@/components/admin/TablePagination"
 import { SortableTableHead } from "@/components/admin/SortableTableHead"
 import { ConfirmPopover } from "@/components/admin/ConfirmPopover"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 type Post = {
   id: string
@@ -35,6 +36,8 @@ type Post = {
 }
 
 export default function PostsPage() {
+  const { locale } = useAdminUiLocale()
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
   const router = useRouter()
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
@@ -54,43 +57,43 @@ export default function PostsPage() {
     const filters: ToolbarFilter[] = [
       {
         key: "status",
-        label: "状态",
+        label: t("状态", "Status"),
         options: [
-          { label: "已发布", value: "PUBLISHED" },
-          { label: "草稿", value: "DRAFT" },
+          { label: t("已发布", "Published"), value: "PUBLISHED" },
+          { label: t("草稿", "Draft"), value: "DRAFT" },
         ],
       },
     ]
     if (categories.length > 0) {
       filters.push({
         key: "category.name",
-        label: "分类",
+        label: t("分类", "Category"),
         options: categories.map((c) => ({ label: c, value: c })),
       })
     }
     return filters
-  }, [categories])
+  }, [categories, locale])
 
   /* ---- batch actions ---- */
   const batchActions: BatchAction[] = useMemo(() => [
     {
-      label: "发布",
+      label: t("发布", "Publish"),
       icon: "ri-check-line",
       onClick: () => handleBatchStatus("PUBLISHED"),
     },
     {
-      label: "转草稿",
+      label: t("转草稿", "Move to Draft"),
       icon: "ri-draft-line",
       onClick: () => handleBatchStatus("DRAFT"),
     },
     {
-      label: "删除",
+      label: t("删除", "Delete"),
       icon: "ri-delete-bin-line",
       variant: "destructive" as const,
       onClick: handleBatchDelete,
       needConfirm: true,
-      confirmTitle: `确定删除选中的 ${tc.selectedIds.size} 篇文章？`,
-      confirmDescription: "删除后不可恢复",
+      confirmTitle: t(`确定删除选中的 ${tc.selectedIds.size} 篇文章？`, `Delete ${tc.selectedIds.size} selected posts?`),
+      confirmDescription: t("删除后不可恢复", "This action cannot be undone"),
     },
   ], [tc.selectedIds])
 
@@ -121,8 +124,8 @@ export default function PostsPage() {
         credentials: "include",
         body: JSON.stringify({ sortOrder }),
       })
-      if (!res.ok) toast.error("排序保存失败")
-    } catch { toast.error("网络错误") }
+      if (!res.ok) toast.error(t("排序保存失败", "Failed to save sort order"))
+    } catch { toast.error(t("网络错误", "Network error")) }
   }
 
   function handleReorder(reordered: Post[]) {
@@ -143,12 +146,12 @@ export default function PostsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ title: "无标题文章", slug: `draft-${Date.now()}` }),
+        body: JSON.stringify({ title: t("无标题文章", "Untitled Post"), slug: `draft-${Date.now()}` }),
       })
       const data = await res.json()
       if (res.ok && data?.id) router.push(`/admin/posts/${data.id}/edit`)
-      else toast.error(data?.error || "创建失败")
-    } catch { toast.error("网络错误") }
+      else toast.error(data?.error || t("创建失败", "Create failed"))
+    } catch { toast.error(t("网络错误", "Network error")) }
     finally { setCreating(false) }
   }
 
@@ -158,7 +161,7 @@ export default function PostsPage() {
     try {
       const res = await fetch(`/api/posts/${id}`, { method: "DELETE", credentials: "include" })
       if (res.ok) setPosts((prev) => prev.filter((p) => p.id !== id))
-      else { const err = await res.json().catch(() => ({})); toast.error(err.error || "删除失败") }
+      else { const err = await res.json().catch(() => ({})); toast.error(err.error || t("删除失败", "Delete failed")) }
     } finally { setDeletingId(null) }
   }
 
@@ -176,9 +179,9 @@ export default function PostsPage() {
       if (res.ok) {
         setPosts((prev) => prev.filter((p) => !ids.includes(p.id)))
         tc.clearSelection()
-        toast.success(`已删除 ${ids.length} 篇文章`)
-      } else toast.error("批量删除失败")
-    } catch { toast.error("网络错误") }
+        toast.success(t(`已删除 ${ids.length} 篇文章`, `${ids.length} posts deleted`))
+      } else toast.error(t("批量删除失败", "Batch delete failed"))
+    } catch { toast.error(t("网络错误", "Network error")) }
   }
 
   async function handleBatchStatus(status: string) {
@@ -194,15 +197,15 @@ export default function PostsPage() {
       if (res.ok) {
         setPosts((prev) => prev.map((p) => ids.includes(p.id) ? { ...p, status } : p))
         tc.clearSelection()
-        toast.success(`已更新 ${ids.length} 篇文章状态`)
-      } else toast.error("批量更新失败")
-    } catch { toast.error("网络错误") }
+        toast.success(t(`已更新 ${ids.length} 篇文章状态`, `${ids.length} posts updated`))
+      } else toast.error(t("批量更新失败", "Batch update failed"))
+    } catch { toast.error(t("网络错误", "Network error")) }
   }
 
   /* ---- helpers ---- */
   function formatDate(dateStr: string) {
     try {
-      return new Date(dateStr).toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" })
+      return new Date(dateStr).toLocaleDateString(locale === "en" ? "en-US" : "zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" })
     } catch { return dateStr }
   }
 
@@ -219,7 +222,7 @@ export default function PostsPage() {
         <TableCell>{post.category?.name ?? "-"}</TableCell>
         <TableCell>
           <Badge variant={post.status === "PUBLISHED" ? "default" : "secondary"}>
-            {post.status === "PUBLISHED" ? "已发布" : "草稿"}
+            {post.status === "PUBLISHED" ? t("已发布", "Published") : t("草稿", "Draft")}
           </Badge>
         </TableCell>
         <TableCell>{formatDate(post.createdAt)}</TableCell>
@@ -232,9 +235,9 @@ export default function PostsPage() {
               <Link href={`/blog/${post.slug}`} target="_blank"><i className="ri-eye-line" /></Link>
             </Button>
             <ConfirmPopover
-              title="确定删除该文章？"
-              description="删除后不可恢复"
-              confirmText="删除"
+              title={t("确定删除该文章？", "Delete this post?")}
+              description={t("删除后不可恢复", "This action cannot be undone")}
+              confirmText={t("删除", "Delete")}
               onConfirm={() => handleDelete(post.id)}
               align="end"
             >
@@ -252,11 +255,11 @@ export default function PostsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">文章管理</h1>
-          <p className="text-muted-foreground mt-1">管理你的博客文章</p>
+          <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">{t("文章管理", "Posts")}</h1>
+          <p className="text-muted-foreground mt-1">{t("管理你的博客文章", "Manage your blog posts")}</p>
         </div>
         <Button onClick={createDraft} disabled={creating}>
-          {creating ? "创建中…" : "写新文章"}
+          {creating ? t("创建中…", "Creating…") : t("写新文章", "New Post")}
         </Button>
       </div>
 
@@ -264,7 +267,7 @@ export default function PostsPage() {
         <TableToolbar
           searchValue={tc.searchTerm}
           onSearchChange={tc.setSearchTerm}
-          searchPlaceholder="搜索文章标题…"
+          searchPlaceholder={t("搜索文章标题…", "Search post titles…")}
           filters={toolbarFilters}
           filterValues={tc.filters}
           onFilterChange={tc.setFilter}
@@ -277,16 +280,16 @@ export default function PostsPage() {
           <div className="flex items-center gap-2 mb-3">
             <span className="text-xs text-muted-foreground">
               <i className="ri-filter-line mr-1" />
-              筛选模式 · 拖拽排序已暂停
+              {t("筛选模式 · 拖拽排序已暂停", "Filter mode · drag sort paused")}
             </span>
             <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={tc.resetFilters}>
-              清除筛选
+              {t("清除筛选", "Clear filters")}
             </Button>
           </div>
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground">加载中…</div>
+          <div className="flex items-center justify-center py-12 text-muted-foreground">{t("加载中…", "Loading…")}</div>
         ) : tc.isFiltering ? (
           /* ---- Filter/search mode: normal table with sorting + checkbox ---- */
           <Table>
@@ -299,25 +302,25 @@ export default function PostsPage() {
                   />
                 </TableHead>
                 <SortableTableHead column="title" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Post)}>
-                  标题
+                  {t("标题", "Title")}
                 </SortableTableHead>
                 <SortableTableHead column="category.name" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Post)}>
-                  分类
+                  {t("分类", "Category")}
                 </SortableTableHead>
                 <SortableTableHead column="status" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Post)}>
-                  状态
+                  {t("状态", "Status")}
                 </SortableTableHead>
                 <SortableTableHead column="createdAt" currentSort={tc.sortColumn as string} currentDirection={tc.sortDirection} onToggle={(c) => tc.toggleSort(c as keyof Post)}>
-                  创建时间
+                  {t("创建时间", "Created")}
                 </SortableTableHead>
-                <TableHead className="w-[100px]">操作</TableHead>
+                <TableHead className="w-[100px]">{t("操作", "Actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {tc.pagedData.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    无匹配结果
+                    {t("无匹配结果", "No matches found")}
                   </TableCell>
                 </TableRow>
               ) : tc.pagedData.map((post) => (
@@ -343,14 +346,14 @@ export default function PostsPage() {
                   <TableHead className="w-[40px]">
                     <Checkbox checked={tc.isAllSelected} onCheckedChange={() => tc.toggleSelectAll()} />
                   </TableHead>
-                  <TableHead>标题</TableHead>
-                  <TableHead>分类</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>创建时间</TableHead>
-                  <TableHead className="w-[100px]">操作</TableHead>
+                  <TableHead>{t("标题", "Title")}</TableHead>
+                  <TableHead>{t("分类", "Category")}</TableHead>
+                  <TableHead>{t("状态", "Status")}</TableHead>
+                  <TableHead>{t("创建时间", "Created")}</TableHead>
+                  <TableHead className="w-[100px]">{t("操作", "Actions")}</TableHead>
                 </TableRow>
               </TableHeader>
-              <SortableTableBody items={posts} columnCount={7} emptyText="暂无文章，点击「写新文章」添加">
+              <SortableTableBody items={posts} columnCount={7} emptyText={t("暂无文章，点击「写新文章」添加", "No posts yet. Click \"New Post\" to add one.")}>
                 {(post) => (
                   <>
                     <TableCell className="w-[40px]">

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/require-admin"
 import prisma from "@/lib/prisma"
+import { safeDeleteKnowledgeSource, safeSyncManySources } from "@/lib/ai/knowledge-trigger"
 
 export const dynamic = "force-dynamic"
 
@@ -13,6 +14,9 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "ids required" }, { status: 400 })
   }
   await prisma.post.deleteMany({ where: { id: { in: ids } } })
+  for (const id of ids as string[]) {
+    await safeDeleteKnowledgeSource("POST", id)
+  }
   return NextResponse.json({ ok: true })
 }
 
@@ -31,5 +35,12 @@ export async function PATCH(request: NextRequest) {
     where: { id: { in: ids } },
     data: { status },
   })
+  if (status === "PUBLISHED") {
+    await safeSyncManySources("POST", ids as string[])
+  } else {
+    for (const id of ids as string[]) {
+      await safeDeleteKnowledgeSource("POST", id)
+    }
+  }
   return NextResponse.json({ ok: true })
 }

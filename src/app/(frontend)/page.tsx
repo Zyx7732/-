@@ -9,19 +9,15 @@ import { useNavConfig } from "@/hooks/useNavConfig"
 import { CardDescriptionHtml } from "@/components/frontend/CardDescriptionHtml"
 import { getBeijingVolLabel } from "@/lib/date-util"
 import { defaultNav } from "@/lib/nav-config"
-import { defaultPageCopy, defaultPersonalName, defaultSiteName } from "@/lib/page-copy"
+import { defaultPageCopy, defaultSiteName, resolveFrontendSectionVisibility, type PageCopy } from "@/lib/page-copy"
 import { ALL_SOCIAL_ENTRIES, SOCIAL_LINK_ENTRIES, normalizeSocialUrl, isImageUrl } from "@/lib/social-links"
 import { HoverPopover } from "@/components/ui/hover-popover"
 import { CoverImage } from "@/components/frontend/CoverImage"
 import type { AboutModules } from "@/lib/about-types"
 import { APP_AUTHOR, APP_VERSION, type FooterConfig } from "@/lib/version"
 import { coverRatioToCss } from "@/lib/cover-ratio"
-
-type PageCopy = {
-  heroGreeting?: string
-  heroPrefix?: string
-  heroDesc?: string
-}
+import { getDictionary } from "@/locales"
+import { t, type I18nDict } from "@/lib/i18n"
 
 type Settings = {
   siteName?: string
@@ -71,7 +67,8 @@ type TutorialItem = {
 }
 
 export default function HomePage() {
-  const { nav, pageCopy, siteName, socialLinks: contextSocialLinks } = useNavConfig()
+  const { nav, pageCopy, siteName, socialLinks: contextSocialLinks, locale } = useNavConfig()
+  const dict = getDictionary(locale)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [designWorks, setDesignWorks] = useState<WorkItem[]>([])
   const [devWorks, setDevWorks] = useState<WorkItem[]>([])
@@ -81,11 +78,11 @@ export default function HomePage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/settings").then((r) => r.json()),
-      fetch("/api/works?type=design").then((r) => r.json()),
-      fetch("/api/works?type=development").then((r) => r.json()),
-      fetch("/api/posts").then((r) => r.json()),
-      fetch("/api/tutorials").then((r) => (r.ok ? r.json() : [])),
+      fetch(`/api/settings?locale=${locale}`).then((r) => r.json()),
+      fetch(`/api/works?type=design&locale=${locale}`).then((r) => r.json()),
+      fetch(`/api/works?type=development&locale=${locale}`).then((r) => r.json()),
+      fetch(`/api/posts?locale=${locale}`).then((r) => r.json()),
+      fetch(`/api/tutorials?locale=${locale}`).then((r) => (r.ok ? r.json() : [])),
     ])
       .then(([s, designW, devW, p, t]) => {
         if (s && typeof s === "object" && !("error" in s)) {
@@ -98,7 +95,7 @@ export default function HomePage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [locale])
 
   const articles = posts.slice(0, 4).map((p) => ({
     title: p.title,
@@ -118,6 +115,7 @@ export default function HomePage() {
   const devCoverRatio = pageCopy.coverRatioWorksDev
   const blogCoverRatio = pageCopy.coverRatioBlog
   const tutorialsCoverRatio = pageCopy.coverRatioTutorials
+  const sectionVisibility = resolveFrontendSectionVisibility(settings?.pageCopy ?? pageCopy)
   const footerLogoText = (nav.logoText ?? defaultNav.logoText ?? "").trim() || (defaultNav.logoText ?? "")
   const heroDisplayName =
     settings?.siteName ??
@@ -134,31 +132,45 @@ export default function HomePage() {
         siteName={heroDisplayName}
         fallbackSocialLinks={contextSocialLinks}
         aboutLabel={nav.about ?? defaultNav.about ?? ""}
+        dict={dict}
       />
-      <WorksGridSection
-        title={designTitle}
-        allLinkHref="/works/design"
-        works={designWorks.slice(0, 4)}
-        fallbackIcon="ri-palette-line"
-        coverRatio={designCoverRatio}
-        loading={loading}
-      />
-      <WorksGridSection
-        title={devTitle}
-        allLinkHref="/works/development"
-        works={devWorks.slice(0, 4)}
-        fallbackIcon="ri-code-s-slash-line"
-        coverRatio={devCoverRatio}
-        loading={loading}
-      />
-      <NotesSection title={notesTitle} articles={articles} coverRatio={blogCoverRatio} loading={loading} />
-      <TutorialsSection title={tutorialsTitle} items={tutorials.slice(0, 4)} coverRatio={tutorialsCoverRatio} loading={loading} />
+      {sectionVisibility.worksDesign && (
+        <WorksGridSection
+          title={designTitle}
+          allLinkHref="/works/design"
+          works={designWorks.slice(0, 4)}
+          fallbackIcon="ri-palette-line"
+          showPrice
+          coverRatio={designCoverRatio}
+          loading={loading}
+          dict={dict}
+        />
+      )}
+      {sectionVisibility.worksDev && (
+        <WorksGridSection
+          title={devTitle}
+          allLinkHref="/works/development"
+          works={devWorks.slice(0, 4)}
+          fallbackIcon="ri-code-s-slash-line"
+          showPrice={false}
+          coverRatio={devCoverRatio}
+          loading={loading}
+          dict={dict}
+        />
+      )}
+      {sectionVisibility.blog && (
+        <NotesSection title={notesTitle} articles={articles} coverRatio={blogCoverRatio} loading={loading} dict={dict} />
+      )}
+      {sectionVisibility.tutorials && (
+        <TutorialsSection title={tutorialsTitle} items={tutorials.slice(0, 4)} coverRatio={tutorialsCoverRatio} loading={loading} dict={dict} />
+      )}
       <FooterSection
         settings={settings}
         logoText={footerLogoText}
         socialLinks={settings?.socialLinks ?? contextSocialLinks ?? undefined}
         version={settings?.footer?.version ?? APP_VERSION}
         author={settings?.footer?.copyrightText ?? APP_AUTHOR}
+        dict={dict}
       />
     </div>
   )
@@ -217,13 +229,24 @@ function HeroSection({
   siteName: heroSiteName,
   fallbackSocialLinks,
   aboutLabel,
+  dict,
 }: {
   settings: Settings | null
   pageCopy?: PageCopyForHero
   siteName?: string
   fallbackSocialLinks?: Record<string, string | undefined> | null
   aboutLabel?: string
+  dict: I18nDict
 }) {
+  const openAssistant = (question?: string, autoSend = false) => {
+    if (typeof window === "undefined") return
+    window.dispatchEvent(
+      new CustomEvent("site-ai-assistant:open", {
+        detail: { question, autoSend },
+      }),
+    )
+  }
+
   const name = heroSiteName ?? defaultSiteName
   const copy = settings?.pageCopy ?? pageCopy
   const heroGreeting = copy?.heroGreeting ?? defaultPageCopy.heroGreeting ?? ""
@@ -263,12 +286,46 @@ function HeroSection({
           />
         </div>
 
+        <FadeContent delay={0.95}>
+          <div className="mb-8 w-full max-w-[640px]">
+            <div className="hero-ai-flow-outer">
+              <div className="hero-ai-flow-inner rounded-2xl p-4 md:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] text-[color:var(--background)]" style={{ background: "var(--foreground)" }}>
+                    AI
+                  </span>
+                  <p className="text-foreground font-medium truncate">{t(dict, "frontend.hero_ai_intro", "懒得翻页？我用 30 秒带你认识我。")}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openAssistant(t(dict, "frontend.hero_ai_quick_prompt", "先给我 3 个最值得看的代表作品"), true)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-foreground hover:bg-accent transition-colors"
+                  >
+                    {t(dict, "frontend.hero_ai_quick_recommend", "快速推荐")} <i className="ri-magic-line text-[11px]" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openAssistant()}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs text-foreground hover:bg-accent transition-colors"
+                  >
+                    {t(dict, "frontend.hero_ai_open_assistant", "打开助手")} <i className="ri-arrow-right-up-line text-[11px]" />
+                  </button>
+                </div>
+              </div>
+              </div>
+            </div>
+          </div>
+        </FadeContent>
+
         <FadeContent delay={1.0}>
           <div className="flex items-center gap-4 flex-wrap">
             <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-border ring-2 ring-background relative shrink-0">
               {avatar ? (
                 <Image
                   src={avatar}
+                  unoptimized
                   alt={name}
                   fill
                   className="object-cover"
@@ -281,7 +338,7 @@ function HeroSection({
               )}
             </div>
             <Link href="/about" className="pride-underline text-sm font-medium text-foreground">
-              {aboutLabel || "关于"}
+              {aboutLabel || t(dict, "frontend.hero_about", "关于")}
             </Link>
             <span className="text-border">·</span>
             {SOCIAL_LINK_ENTRIES.map(({ key, label, icon, type }) => {
@@ -295,14 +352,14 @@ function HeroSection({
                     content={
                       isImageUrl(trimmed) ? (
                         <div className="flex flex-col items-center gap-2">
-                          <img src={trimmed} alt={`${label}二维码`} className="w-36 h-36 rounded-lg object-contain" />
+                          <img src={trimmed} alt={`${label}${t(dict, "frontend.qr_suffix", "二维码")}`} className="w-36 h-36 rounded-lg object-contain" />
                           <span className="text-xs text-muted-foreground">{label}</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
                           <i className={`${icon} text-base text-muted-foreground`} />
                           <span className="text-sm text-foreground font-medium">{trimmed}</span>
-                          <button type="button" className="ml-1 p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors" title="复制" onClick={() => navigator.clipboard.writeText(trimmed)}>
+                          <button type="button" className="ml-1 p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors" title={t(dict, "common.copy", "复制")} onClick={() => navigator.clipboard.writeText(trimmed)}>
                             <i className="ri-file-copy-line text-sm" />
                           </button>
                         </div>
@@ -330,7 +387,7 @@ function HeroSection({
   )
 }
 
-function SectionHeader({ title, linkHref, linkText = "查看全部" }: { title: string; linkHref: string; linkText?: string }) {
+function SectionHeader({ title, linkHref, linkText }: { title: string; linkHref: string; linkText: string }) {
   return (
     <FadeContent>
       <div className="flex items-center justify-between mb-10">
@@ -394,24 +451,31 @@ function WorksGridSection({
   allLinkHref,
   works,
   fallbackIcon,
+  showPrice = true,
   coverRatio,
   loading,
+  dict,
 }: {
   title: string
   allLinkHref: string
   works: WorkItem[]
   fallbackIcon: string
+  showPrice?: boolean
   coverRatio?: string
   loading?: boolean
+  dict: I18nDict
 }) {
+  const emptyPrefix = t(dict, "common.empty_prefix", "暂无")
+  const viewAll = t(dict, "common.view_all", "查看全部")
+  const openSource = t(dict, "frontend.open_source", "开源")
   return (
     <section className="px-6 md:px-12 lg:px-16 py-16 md:py-24 border-t border-border/40 first:border-t-0">
-      <SectionHeader title={title} linkHref={allLinkHref} />
+      <SectionHeader title={title} linkHref={allLinkHref} linkText={viewAll} />
 
       {loading ? (
         <SkeletonGrid />
       ) : works.length === 0 ? (
-        <p className="text-muted-foreground text-sm py-4">暂无{title}</p>
+        <p className="text-muted-foreground text-sm py-4">{emptyPrefix}{title}</p>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
           {works.map((work, index) => (
@@ -428,7 +492,7 @@ function WorksGridSection({
                     <CoverImage src={work.coverImage} alt={work.title} fallbackIcon={fallbackIcon} />
                     {work.isFree && (
                       <span className="absolute top-2 left-2 z-10 text-xs font-medium px-2.5 py-1 rounded-md bg-emerald-500/90 text-white backdrop-blur-sm">
-                        开源
+                        {openSource}
                       </span>
                     )}
                   </div>
@@ -451,7 +515,7 @@ function WorksGridSection({
                           <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded bg-muted/80 text-muted-foreground shrink-0">+{(work.tags?.length ?? 0) - 3}</span>
                         )}
                       </div>
-                      <WorkPriceIndicator isFree={work.isFree} price={work.price} />
+                      {showPrice ? <WorkPriceIndicator isFree={work.isFree} price={work.price} /> : null}
                     </div>
                   </div>
                 </GlowBorder>
@@ -470,20 +534,24 @@ function NotesSection({
   articles,
   coverRatio,
   loading,
+  dict,
 }: {
   title: string
   articles: { title: string; excerpt: string | null; coverImage: string | null; date: string; slug: string; category?: { name: string } | null; tags?: TagItem[] }[]
   coverRatio?: string
   loading?: boolean
+  dict: I18nDict
 }) {
+  const emptyPrefix = t(dict, "common.empty_prefix", "暂无")
+  const viewAll = t(dict, "common.view_all", "查看全部")
   return (
     <section className="px-6 md:px-12 lg:px-16 py-16 md:py-24 border-t border-border/40">
-      <SectionHeader title={title} linkHref="/blog" />
+      <SectionHeader title={title} linkHref="/blog" linkText={viewAll} />
 
       {loading ? (
         <SkeletonGrid />
       ) : articles.length === 0 ? (
-        <p className="text-muted-foreground text-sm py-4">暂无{title}</p>
+        <p className="text-muted-foreground text-sm py-4">{emptyPrefix}{title}</p>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
           {articles.map((article, index) => (
@@ -539,12 +607,16 @@ function TutorialsSection({
   items,
   coverRatio,
   loading,
+  dict,
 }: {
   title: string
   items: TutorialItem[]
   coverRatio?: string
   loading?: boolean
+  dict: I18nDict
 }) {
+  const emptyPrefix = t(dict, "common.empty_prefix", "暂无")
+  const viewAll = t(dict, "common.view_all", "查看全部")
   const playOverlay = (
     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-black/20">
       <i className="ri-play-circle-fill text-4xl text-white/90" />
@@ -553,12 +625,12 @@ function TutorialsSection({
 
   return (
     <section className="px-6 md:px-12 lg:px-16 py-16 md:py-24 border-t border-border/40">
-      <SectionHeader title={title} linkHref="/tutorials" />
+      <SectionHeader title={title} linkHref="/tutorials" linkText={viewAll} />
 
       {loading ? (
         <SkeletonGrid />
       ) : items.length === 0 ? (
-        <p className="text-muted-foreground text-sm py-4">暂无{title}</p>
+        <p className="text-muted-foreground text-sm py-4">{emptyPrefix}{title}</p>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
           {items.map((item, index) => (
@@ -613,12 +685,14 @@ function FooterSection({
   socialLinks,
   version,
   author,
+  dict,
 }: {
   settings: Settings | null
   logoText: string
   socialLinks?: Record<string, string | undefined> | null
   version: string
   author: string
+  dict: I18nDict
 }) {
   const links = socialLinks ?? settings?.socialLinks ?? {}
   const year = new Date().getFullYear()
@@ -655,14 +729,14 @@ function FooterSection({
                     content={
                       isImageUrl(trimmed) ? (
                         <div className="flex flex-col items-center gap-2">
-                          <img src={trimmed} alt={`${label}二维码`} className="w-36 h-36 rounded-lg object-contain" />
+                          <img src={trimmed} alt={`${label}${t(dict, "frontend.qr_suffix", "二维码")}`} className="w-36 h-36 rounded-lg object-contain" />
                           <span className="text-xs text-muted-foreground">{label}</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
                           <i className={`${icon} text-base text-muted-foreground`} />
                           <span className="text-sm text-foreground font-medium">{trimmed}</span>
-                          <button type="button" className="ml-1 p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors" title="复制" onClick={() => navigator.clipboard.writeText(trimmed)}>
+                          <button type="button" className="ml-1 p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors" title={t(dict, "common.copy", "复制")} onClick={() => navigator.clipboard.writeText(trimmed)}>
                             <i className="ri-file-copy-line text-sm" />
                           </button>
                         </div>

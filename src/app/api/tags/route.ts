@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdmin } from "@/lib/require-admin"
 import prisma from "@/lib/prisma"
+import { DEFAULT_LOCALE, fromPrismaLocale, LOCALE_COOKIE_KEY, normalizeLocale } from "@/lib/i18n"
+import { localizeTag } from "@/lib/localized-content"
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const locale = normalizeLocale(
+    searchParams.get("locale") ?? request.cookies.get(LOCALE_COOKIE_KEY)?.value ?? DEFAULT_LOCALE,
+  )
+  const settings = await prisma.settings.findUnique({ where: { id: "settings" }, select: { defaultLocale: true } })
+  const fallbackLocale = fromPrismaLocale(settings?.defaultLocale)
   const list = await prisma.tag.findMany({
     orderBy: { name: "asc" },
     include: {
@@ -26,9 +34,10 @@ export async function GET() {
         })),
         ...t.tutorials.map((v) => ({ id: v.id, title: v.title, entityType: "tutorial" as const })),
       ]
+      const localized = localizeTag(t as unknown as Record<string, unknown>, locale, fallbackLocale)
       return {
         id: t.id,
-        name: t.name,
+        name: localized.name,
         count: t._count.posts + t._count.works + t._count.tutorials,
         items,
       }
@@ -54,6 +63,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "该标签已存在" }, { status: 409 })
   }
 
-  const tag = await prisma.tag.create({ data: { name: name.trim() } })
+  const tag = await prisma.tag.create({
+    data: {
+      name: name.trim(),
+      nameI18n: { zh: name.trim(), en: null },
+    },
+  })
   return NextResponse.json({ ...tag, count: 0 }, { status: 201 })
 }

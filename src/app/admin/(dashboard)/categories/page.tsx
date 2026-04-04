@@ -36,10 +36,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useTableControls } from "@/hooks/useTableControls"
-import { TableToolbar, type ToolbarFilter, type BatchAction } from "@/components/admin/TableToolbar"
-import { TablePagination } from "@/components/admin/TablePagination"
-import { SortableTableHead } from "@/components/admin/SortableTableHead"
+import { TableToolbar, type BatchAction } from "@/components/admin/TableToolbar"
+import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 type RelatedItem = { id: string; title: string; entityType: string }
 
@@ -73,17 +71,34 @@ function getEditLink(item: RelatedItem): string {
   }
 }
 
-function getEntityLabel(entityType: string): string {
+function getEntityLabel(entityType: string, locale: "zh" | "en"): string {
   switch (entityType) {
-    case "post": return "文章"
-    case "design": return "设计"
-    case "development": return "开发"
-    case "tutorial": return "教程"
+    case "post": return locale === "en" ? "Post" : "文章"
+    case "design": return locale === "en" ? "Design" : "设计"
+    case "development": return locale === "en" ? "Development" : "开发"
+    case "tutorial": return locale === "en" ? "Tutorial" : "教程"
     default: return ""
   }
 }
 
+function getCategoryTypeLabel(type: string, locale: "zh" | "en"): string {
+  switch (type) {
+    case "POST":
+      return locale === "en" ? "Post" : "文章"
+    case "DESIGN":
+      return locale === "en" ? "Design Work" : "设计作品"
+    case "DEVELOPMENT":
+      return locale === "en" ? "Development Work" : "开发作品"
+    case "TUTORIAL":
+      return locale === "en" ? "Tutorial" : "视频教程"
+    default:
+      return locale === "en" ? "Work" : "作品"
+  }
+}
+
 export default function CategoriesPage() {
+  const { locale } = useAdminUiLocale()
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
   // ===== 分类状态 =====
   const [categories, setCategories] = useState<CategoryItem[]>([])
   const [loadingCats, setLoadingCats] = useState(true)
@@ -153,12 +168,12 @@ export default function CategoriesPage() {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        toast.error(data.error || "创建失败")
+        toast.error(data.error || t("创建失败", "Create failed"))
         return
       }
       setNewCatName("")
       setCreateCatOpen(false)
-      toast.success("分类已创建")
+      toast.success(t("分类已创建", "Category created"))
       fetchCategories()
     } finally {
       setSavingCat(false)
@@ -177,11 +192,11 @@ export default function CategoriesPage() {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        toast.error(data.error || "更新失败")
+        toast.error(data.error || t("更新失败", "Update failed"))
         return
       }
       setEditCat(null)
-      toast.success("分类已更新")
+      toast.success(t("分类已更新", "Category updated"))
       fetchCategories()
     } finally {
       setSavingEditCat(false)
@@ -198,11 +213,11 @@ export default function CategoriesPage() {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        toast.error(data.error || "删除失败")
+        toast.error(data.error || t("删除失败", "Delete failed"))
         return
       }
       setDeleteCat(null)
-      toast.success("分类已删除")
+      toast.success(t("分类已删除", "Category deleted"))
       fetchCategories()
     } finally {
       setDeletingCat(false)
@@ -256,21 +271,24 @@ export default function CategoriesPage() {
       })
       if (res.ok) {
         setSelectedCatIds(new Set())
-        toast.success(`已删除 ${ids.length} 个分类`)
+        toast.success(t(`已删除 ${ids.length} 个分类`, `Deleted ${ids.length} categories`))
         await fetchCategories()
-      } else toast.error("批量删除失败")
-    } catch { toast.error("网络错误") }
+      } else toast.error(t("批量删除失败", "Batch delete failed"))
+    } catch { toast.error(t("网络错误", "Network error")) }
   }
 
   const catBatchActions: BatchAction[] = selectedCatIds.size > 0
     ? [{
-        label: "删除",
+        label: t("删除", "Delete"),
         icon: "ri-delete-bin-line",
         variant: "destructive" as const,
         onClick: handleBatchDeleteCategories,
         needConfirm: true,
-        confirmTitle: `确定删除选中的 ${selectedCatIds.size} 个分类？`,
-        confirmDescription: "其下内容将变为未分类",
+        confirmTitle: t(
+          `确定删除选中的 ${selectedCatIds.size} 个分类？`,
+          `Delete ${selectedCatIds.size} selected categories?`,
+        ),
+        confirmDescription: t("其下内容将变为未分类", "Related content will become uncategorized"),
       }]
     : []
 
@@ -287,12 +305,12 @@ export default function CategoriesPage() {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        toast.error(data.error || "创建失败")
+        toast.error(data.error || t("创建失败", "Create failed"))
         return
       }
       setNewTagName("")
       setCreateTagOpen(false)
-      toast.success("标签已创建")
+      toast.success(t("标签已创建", "Tag created"))
       fetchTags()
     } finally {
       setSavingTag(false)
@@ -311,11 +329,11 @@ export default function CategoriesPage() {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        toast.error(data.error || "更新失败")
+        toast.error(data.error || t("更新失败", "Update failed"))
         return
       }
       setEditTag(null)
-      toast.success("标签已更新")
+      toast.success(t("标签已更新", "Tag updated"))
       fetchTags()
     } finally {
       setSavingEditTag(false)
@@ -332,11 +350,11 @@ export default function CategoriesPage() {
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        toast.error(data.error || "删除失败")
+        toast.error(data.error || t("删除失败", "Delete failed"))
         return
       }
       setDeleteTag(null)
-      toast.success("标签已删除")
+      toast.success(t("标签已删除", "Tag deleted"))
       fetchTags()
     } finally {
       setDeletingTag(false)
@@ -347,15 +365,15 @@ export default function CategoriesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">
-          分类与标签
+          {t("分类与标签", "Categories & Tags")}
         </h1>
-        <p className="text-muted-foreground mt-1">管理文章和作品的分类与标签</p>
+        <p className="text-muted-foreground mt-1">{t("管理文章和作品的分类与标签", "Manage categories and tags for posts and works")}</p>
       </div>
 
       <Tabs defaultValue="categories" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="categories">分类管理</TabsTrigger>
-          <TabsTrigger value="tags">标签管理</TabsTrigger>
+          <TabsTrigger value="categories">{t("分类管理", "Categories")}</TabsTrigger>
+          <TabsTrigger value="tags">{t("标签管理", "Tags")}</TabsTrigger>
         </TabsList>
 
         {/* ==================== 分类 Tab ==================== */}
@@ -364,15 +382,15 @@ export default function CategoriesPage() {
             <TableToolbar
               searchValue={catSearch}
               onSearchChange={setCatSearch}
-              searchPlaceholder="搜索分类名称…"
+              searchPlaceholder={t("搜索分类名称…", "Search category name…")}
               filters={[{
                 key: "type",
-                label: "类型",
+                label: t("类型", "Type"),
                 options: [
-                  { label: "文章", value: "POST" },
-                  { label: "设计作品", value: "DESIGN" },
-                  { label: "开发作品", value: "DEVELOPMENT" },
-                  { label: "视频教程", value: "TUTORIAL" },
+                  { label: t("文章", "Post"), value: "POST" },
+                  { label: t("设计作品", "Design Work"), value: "DESIGN" },
+                  { label: t("开发作品", "Development Work"), value: "DEVELOPMENT" },
+                  { label: t("视频教程", "Tutorial"), value: "TUTORIAL" },
                 ],
               }]}
               filterValues={{ type: catTypeFilter }}
@@ -380,7 +398,7 @@ export default function CategoriesPage() {
               selectedCount={selectedCatIds.size}
               batchActions={catBatchActions}
               onClearSelection={() => setSelectedCatIds(new Set())}
-              extra={<Button onClick={() => { setNewCatName(""); setCreateCatOpen(true) }}>新建分类</Button>}
+              extra={<Button onClick={() => { setNewCatName(""); setCreateCatOpen(true) }}>{t("新建分类", "New Category")}</Button>}
             />
 
             <Table>
@@ -389,22 +407,22 @@ export default function CategoriesPage() {
                   <TableHead className="w-[40px]">
                     <Checkbox checked={isAllCatsSelected} onCheckedChange={toggleSelectAllCats} />
                   </TableHead>
-                  <TableHead>名称</TableHead>
+                  <TableHead>{t("名称", "Name")}</TableHead>
                   <TableHead>Slug</TableHead>
-                  <TableHead>类型</TableHead>
-                  <TableHead>数量</TableHead>
-                  <TableHead className="w-[100px]">操作</TableHead>
+                  <TableHead>{t("类型", "Type")}</TableHead>
+                  <TableHead>{t("数量", "Count")}</TableHead>
+                  <TableHead className="w-[100px]">{t("操作", "Actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loadingCats ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">加载中…</TableCell>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">{t("加载中…", "Loading…")}</TableCell>
                   </TableRow>
                 ) : filteredCategories.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                      {categories.length === 0 ? "暂无分类" : "无匹配结果"}
+                      {categories.length === 0 ? t("暂无分类", "No categories yet") : t("无匹配结果", "No matches found")}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -420,11 +438,7 @@ export default function CategoriesPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary">
-                            {cat.type === "POST" ? "文章"
-                              : cat.type === "DESIGN" ? "设计作品"
-                              : cat.type === "DEVELOPMENT" ? "开发作品"
-                              : cat.type === "TUTORIAL" ? "视频教程"
-                              : "作品"}
+                            {getCategoryTypeLabel(cat.type, locale)}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -454,13 +468,13 @@ export default function CategoriesPage() {
                                   setEditCat(cat)
                                 }}
                               >
-                                编辑
+                                {t("编辑", "Edit")}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => setDeleteCat(cat)}
                               >
-                                删除
+                                {t("删除", "Delete")}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -473,19 +487,22 @@ export default function CategoriesPage() {
                               {cat.items.map((item) => (
                                 <div key={item.id} className="flex items-center gap-2 text-sm">
                                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
-                                    {getEntityLabel(item.entityType)}
+                                    {getEntityLabel(item.entityType, locale)}
                                   </Badge>
                                   <Link
                                     href={getEditLink(item)}
                                     className="text-foreground hover:underline underline-offset-2 truncate"
                                   >
-                                    {item.title || "无标题"}
+                                    {item.title || t("无标题", "Untitled")}
                                   </Link>
                                 </div>
                               ))}
                               {cat.count > cat.items.length && (
                                 <p className="text-xs text-muted-foreground pt-1">
-                                  还有 {cat.count - cat.items.length} 项未显示
+                                  {t(
+                                    `还有 ${cat.count - cat.items.length} 项未显示`,
+                                    `${cat.count - cat.items.length} more not shown`,
+                                  )}
                                 </p>
                               )}
                             </div>
@@ -516,6 +533,7 @@ export default function CategoriesPage() {
               setNewTagName={setNewTagName}
               setCreateTagOpen={setCreateTagOpen}
               fetchTags={fetchTags}
+              locale={locale}
             />
           </div>
         </TabsContent>
@@ -525,35 +543,35 @@ export default function CategoriesPage() {
       <Dialog open={createCatOpen} onOpenChange={setCreateCatOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>新建分类</DialogTitle>
+            <DialogTitle>{t("新建分类", "New Category")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="space-y-2">
-              <Label htmlFor="newCatName">分类名称</Label>
+              <Label htmlFor="newCatName">{t("分类名称", "Category Name")}</Label>
               <Input
                 id="newCatName"
-                placeholder="输入分类名称"
+                placeholder={t("输入分类名称", "Enter category name")}
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateCategory()}
               />
             </div>
             <div className="space-y-2">
-              <Label>分类类型</Label>
+              <Label>{t("分类类型", "Category Type")}</Label>
               <Select value={newCatType} onValueChange={setNewCatType}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="POST">文章</SelectItem>
-                  <SelectItem value="DESIGN">设计作品</SelectItem>
-                  <SelectItem value="DEVELOPMENT">开发作品</SelectItem>
-                  <SelectItem value="TUTORIAL">视频教程</SelectItem>
+                  <SelectItem value="POST">{t("文章", "Post")}</SelectItem>
+                  <SelectItem value="DESIGN">{t("设计作品", "Design Work")}</SelectItem>
+                  <SelectItem value="DEVELOPMENT">{t("开发作品", "Development Work")}</SelectItem>
+                  <SelectItem value="TUTORIAL">{t("视频教程", "Tutorial")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <Button className="w-full" onClick={handleCreateCategory} disabled={savingCat || !newCatName.trim()}>
-              {savingCat ? "创建中…" : "创建"}
+              {savingCat ? t("创建中…", "Creating…") : t("创建", "Create")}
             </Button>
           </div>
         </DialogContent>
@@ -563,11 +581,11 @@ export default function CategoriesPage() {
       <Dialog open={!!editCat} onOpenChange={(open) => !open && setEditCat(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>编辑分类</DialogTitle>
+            <DialogTitle>{t("编辑分类", "Edit Category")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="space-y-2">
-              <Label htmlFor="editCatName">分类名称</Label>
+              <Label htmlFor="editCatName">{t("分类名称", "Category Name")}</Label>
               <Input
                 id="editCatName"
                 value={editCatName}
@@ -584,7 +602,7 @@ export default function CategoriesPage() {
               />
             </div>
             <Button className="w-full" onClick={handleEditCategory} disabled={savingEditCat || !editCatName.trim()}>
-              {savingEditCat ? "保存中…" : "保存"}
+              {savingEditCat ? t("保存中…", "Saving…") : t("保存", "Save")}
             </Button>
           </div>
         </DialogContent>
@@ -594,19 +612,22 @@ export default function CategoriesPage() {
       {deleteCat && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-card rounded-xl border p-6 shadow-lg max-w-sm w-full mx-4 space-y-4">
-            <h3 className="text-lg font-semibold">确认删除分类</h3>
+            <h3 className="text-lg font-semibold">{t("确认删除分类", "Confirm Category Deletion")}</h3>
             <p className="text-sm text-muted-foreground">
-              确定要删除分类「{deleteCat.name}」吗？
+              {t(`确定要删除分类「${deleteCat.name}」吗？`, `Delete category "${deleteCat.name}"?`)}
               {deleteCat.count > 0 && (
                 <span className="text-amber-600 dark:text-amber-400">
-                  {" "}该分类下有 {deleteCat.count} 个内容，删除后这些内容将变为未分类。
+                  {t(
+                    ` 该分类下有 ${deleteCat.count} 个内容，删除后这些内容将变为未分类。`,
+                    ` This category has ${deleteCat.count} items. They will become uncategorized after deletion.`,
+                  )}
                 </span>
               )}
             </p>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setDeleteCat(null)}>取消</Button>
+              <Button variant="outline" size="sm" onClick={() => setDeleteCat(null)}>{t("取消", "Cancel")}</Button>
               <Button variant="destructive" size="sm" onClick={handleDeleteCategory} disabled={deletingCat}>
-                {deletingCat ? "删除中…" : "确认删除"}
+                {deletingCat ? t("删除中…", "Deleting…") : t("确认删除", "Confirm Delete")}
               </Button>
             </div>
           </div>
@@ -617,21 +638,21 @@ export default function CategoriesPage() {
       <Dialog open={createTagOpen} onOpenChange={setCreateTagOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>新建标签</DialogTitle>
+            <DialogTitle>{t("新建标签", "New Tag")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="space-y-2">
-              <Label htmlFor="newTagName">标签名称</Label>
+              <Label htmlFor="newTagName">{t("标签名称", "Tag Name")}</Label>
               <Input
                 id="newTagName"
-                placeholder="输入标签名称"
+                placeholder={t("输入标签名称", "Enter tag name")}
                 value={newTagName}
                 onChange={(e) => setNewTagName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateTag()}
               />
             </div>
             <Button className="w-full" onClick={handleCreateTag} disabled={savingTag || !newTagName.trim()}>
-              {savingTag ? "创建中…" : "创建"}
+              {savingTag ? t("创建中…", "Creating…") : t("创建", "Create")}
             </Button>
           </div>
         </DialogContent>
@@ -641,11 +662,11 @@ export default function CategoriesPage() {
       <Dialog open={!!editTag} onOpenChange={(open) => !open && setEditTag(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>编辑标签</DialogTitle>
+            <DialogTitle>{t("编辑标签", "Edit Tag")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div className="space-y-2">
-              <Label htmlFor="editTagName">标签名称</Label>
+              <Label htmlFor="editTagName">{t("标签名称", "Tag Name")}</Label>
               <Input
                 id="editTagName"
                 value={editTagName}
@@ -654,7 +675,7 @@ export default function CategoriesPage() {
               />
             </div>
             <Button className="w-full" onClick={handleEditTag} disabled={savingEditTag || !editTagName.trim()}>
-              {savingEditTag ? "保存中…" : "保存"}
+              {savingEditTag ? t("保存中…", "Saving…") : t("保存", "Save")}
             </Button>
           </div>
         </DialogContent>
@@ -664,19 +685,22 @@ export default function CategoriesPage() {
       {deleteTag && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-card rounded-xl border p-6 shadow-lg max-w-sm w-full mx-4 space-y-4">
-            <h3 className="text-lg font-semibold">确认删除标签</h3>
+            <h3 className="text-lg font-semibold">{t("确认删除标签", "Confirm Tag Deletion")}</h3>
             <p className="text-sm text-muted-foreground">
-              确定要删除标签「{deleteTag.name}」吗？
+              {t(`确定要删除标签「${deleteTag.name}」吗？`, `Delete tag "${deleteTag.name}"?`)}
               {deleteTag.count > 0 && (
                 <span className="text-amber-600 dark:text-amber-400">
-                  {" "}该标签已被 {deleteTag.count} 篇文章使用，删除后将自动解除关联。
+                  {t(
+                    ` 该标签已被 ${deleteTag.count} 篇文章使用，删除后将自动解除关联。`,
+                    ` This tag is used by ${deleteTag.count} posts. Relations will be removed automatically.`,
+                  )}
                 </span>
               )}
             </p>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setDeleteTag(null)}>取消</Button>
+              <Button variant="outline" size="sm" onClick={() => setDeleteTag(null)}>{t("取消", "Cancel")}</Button>
               <Button variant="destructive" size="sm" onClick={handleDeleteTag} disabled={deletingTag}>
-                {deletingTag ? "删除中…" : "确认删除"}
+                {deletingTag ? t("删除中…", "Deleting…") : t("确认删除", "Confirm Delete")}
               </Button>
             </div>
           </div>
@@ -700,6 +724,7 @@ function TagsTableSection({
   setNewTagName,
   setCreateTagOpen,
   fetchTags,
+  locale,
 }: {
   tags: TagItem[]
   loadingTags: boolean
@@ -713,7 +738,9 @@ function TagsTableSection({
   setNewTagName: (v: string) => void
   setCreateTagOpen: (v: boolean) => void
   fetchTags: () => void
+  locale: "zh" | "en"
 }) {
+  const t = (zh: string, en: string) => (locale === "en" ? en : zh)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const filtered = useMemo(() => {
@@ -761,16 +788,16 @@ function TagsTableSection({
       })
       if (res.ok) {
         setSelectedIds(new Set())
-        toast.success(`已删除 ${ids.length} 个标签`)
+        toast.success(t(`已删除 ${ids.length} 个标签`, `Deleted ${ids.length} tags`))
         await fetchTags()
-      } else toast.error("批量删除失败")
-    } catch { toast.error("网络错误") }
+      } else toast.error(t("批量删除失败", "Batch delete failed"))
+    } catch { toast.error(t("网络错误", "Network error")) }
   }
 
   const batchActions: BatchAction[] = selectedIds.size > 0
     ? [{
-        label: "删除", icon: "ri-delete-bin-line", variant: "destructive" as const, onClick: handleBatchDeleteTags,
-        needConfirm: true, confirmTitle: `确定删除选中的 ${selectedIds.size} 个标签？`, confirmDescription: "删除后不可恢复",
+        label: t("删除", "Delete"), icon: "ri-delete-bin-line", variant: "destructive" as const, onClick: handleBatchDeleteTags,
+        needConfirm: true, confirmTitle: t(`确定删除选中的 ${selectedIds.size} 个标签？`, `Delete ${selectedIds.size} selected tags?`), confirmDescription: t("删除后不可恢复", "This action cannot be undone"),
       }]
     : []
 
@@ -779,11 +806,11 @@ function TagsTableSection({
       <TableToolbar
         searchValue={tagSearch}
         onSearchChange={setTagSearch}
-        searchPlaceholder="搜索标签名称…"
+        searchPlaceholder={t("搜索标签名称…", "Search tag name…")}
         selectedCount={selectedIds.size}
         batchActions={batchActions}
         onClearSelection={() => setSelectedIds(new Set())}
-        extra={<Button onClick={() => { setNewTagName(""); setCreateTagOpen(true) }}>新建标签</Button>}
+        extra={<Button onClick={() => { setNewTagName(""); setCreateTagOpen(true) }}>{t("新建标签", "New Tag")}</Button>}
       />
       <Table>
         <TableHeader>
@@ -791,16 +818,16 @@ function TagsTableSection({
             <TableHead className="w-[40px]">
               <Checkbox checked={isAllSelected} onCheckedChange={toggleSelectAll} />
             </TableHead>
-            <TableHead>名称</TableHead>
-            <TableHead>数量</TableHead>
-            <TableHead className="w-[100px]">操作</TableHead>
+            <TableHead>{t("名称", "Name")}</TableHead>
+            <TableHead>{t("数量", "Count")}</TableHead>
+            <TableHead className="w-[100px]">{t("操作", "Actions")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {loadingTags ? (
-            <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">加载中…</TableCell></TableRow>
+            <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">{t("加载中…", "Loading…")}</TableCell></TableRow>
           ) : filtered.length === 0 ? (
-            <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">{tags.length === 0 ? "暂无标签" : "无匹配标签"}</TableCell></TableRow>
+            <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">{tags.length === 0 ? t("暂无标签", "No tags yet") : t("无匹配标签", "No matching tags")}</TableCell></TableRow>
           ) : filtered.map((tag) => (
             <React.Fragment key={tag.id}>
               <TableRow>
@@ -824,12 +851,12 @@ function TagsTableSection({
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">•••</Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => { setEditTagName(tag.name); setEditTag(tag) }}>编辑</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTag(tag)}>删除</DropdownMenuItem>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">•••</Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => { setEditTagName(tag.name); setEditTag(tag) }}>{t("编辑", "Edit")}</DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTag(tag)}>{t("删除", "Delete")}</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -840,12 +867,12 @@ function TagsTableSection({
                     <div className="space-y-1">
                       {tag.items.map((item) => (
                         <div key={item.id} className="flex items-center gap-2 text-sm">
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">{getEntityLabel(item.entityType)}</Badge>
-                          <Link href={getEditLink(item)} className="text-foreground hover:underline underline-offset-2 truncate">{item.title || "无标题"}</Link>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">{getEntityLabel(item.entityType, locale)}</Badge>
+                          <Link href={getEditLink(item)} className="text-foreground hover:underline underline-offset-2 truncate">{item.title || t("无标题", "Untitled")}</Link>
                         </div>
                       ))}
                       {tag.count > tag.items.length && (
-                        <p className="text-xs text-muted-foreground pt-1">还有 {tag.count - tag.items.length} 项未显示</p>
+                        <p className="text-xs text-muted-foreground pt-1">{t(`还有 ${tag.count - tag.items.length} 项未显示`, `${tag.count - tag.items.length} more not shown`)}</p>
                       )}
                     </div>
                   </TableCell>

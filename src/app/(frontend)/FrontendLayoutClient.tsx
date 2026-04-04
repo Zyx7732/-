@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { ThemeColorProvider } from "@/components/ThemeColorProvider"
 import { FrontendSettingsProvider } from "@/contexts/FrontendSettingsContext"
 import type { FrontendSettings } from "@/lib/settings-server"
+import { SiteAIAssistant } from "@/components/frontend/SiteAIAssistant"
 
 const STORAGE_KEY = "frontend-sidebar-width"
 const MIN_WIDTH = 160
@@ -34,6 +35,14 @@ export default function FrontendLayoutClient({
       if (w >= MIN_WIDTH && w <= MAX_WIDTH) setSidebarWidth(w)
     }
   }, [])
+
+  useEffect(() => {
+    fetch("/api/locale", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locale: initial.locale }),
+    }).catch(() => {})
+  }, [initial.locale])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -109,6 +118,7 @@ export default function FrontendLayoutClient({
           <div className="lg:hidden">
             <BottomNav />
           </div>
+          <SiteAIAssistant />
         </div>
       </FrontendSettingsProvider>
       </ThemeColorProvider>

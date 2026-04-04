@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/sonner"
 import { getSettingsRow } from "@/lib/settings-db"
 import { normalizeSiteName, defaultSiteDescription } from "@/lib/page-copy"
 import type { PageCopy } from "@/lib/page-copy"
+import { getLocaleFromCookie } from "@/lib/i18n-server"
 import "remixicon/fonts/remixicon.css"
 import "./globals.css"
 
@@ -59,13 +60,22 @@ export const viewport: Viewport = {
   maximumScale: 1,
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const locale = await getLocaleFromCookie()
   return (
-    <html lang="zh-CN" suppressHydrationWarning>
+    <html lang={locale === "en" ? "en" : "zh-CN"} suppressHydrationWarning>
+      <head>
+        {process.env.NODE_ENV === 'development' && (
+          <script
+            src="https://mcp.figma.com/mcp/html-to-design/capture.js"
+            async
+          />
+        )}
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} antialiased bg-background text-foreground`}
         suppressHydrationWarning

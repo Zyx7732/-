@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
     siteName: normalizeSiteName(settings?.siteName),
     workTitle: order.work?.title ?? "作品",
     orderNo: order.orderNo,
+    locale: order.buyerLocale === "EN" ? "en" : "zh",
     isFree: false,
     amount: Number(order.amount),
     figmaUrl,

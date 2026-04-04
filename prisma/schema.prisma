@@ -16,6 +16,11 @@ enum Role {
   VIEWER  // 体验账户：仅可浏览后台，无法修改
 }
 
+enum Locale {
+  ZH
+  EN
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -37,6 +42,11 @@ model Post {
   slug        String     @unique @db.VarChar(255)
   content     Json       // Plate 编辑器 JSON 内容
   excerpt     String?    @db.Text
+  titleI18n   Json?      // { zh: string, en: string }
+  slugI18n    Json?      // { zh: string, en: string }
+  excerptI18n Json?      // { zh: string, en: string }
+  contentI18n Json?      // { zh: JSONContent, en: JSONContent }
+  seoI18n     Json?      // { zh: { title, description }, en: { title, description } }
   coverImage  String?    @db.Text
   coverRatio  String     @default("3:4") @db.VarChar(10)
   status      PostStatus @default(DRAFT)
@@ -65,9 +75,14 @@ model Work {
   id             String        @id @default(cuid())
   title          String        @db.VarChar(255)
   slug           String        @unique @db.VarChar(255)
+  titleI18n      Json?         // { zh: string, en: string }
+  slugI18n       Json?         // { zh: string, en: string }
   workType       WorkType      @default(DESIGN) // 设计作品 / 开发作品
   description    String?       @db.Text
   content        Json?         // 详细描述（Plate JSON）
+  descriptionI18n Json?        // { zh: string, en: string }
+  contentI18n    Json?         // { zh: JSONContent, en: JSONContent }
+  seoI18n        Json?         // { zh: { title, description }, en: { title, description } }
   coverImage     String        @db.Text
   coverRatio     String        @default("3:4") @db.VarChar(10)
   images         Json          // 详情图数组，存储为 JSON
@@ -131,6 +146,7 @@ model Order {
   status        OrderStatus  @default(PENDING)
   buyerEmail    String       @db.VarChar(255)
   buyerName     String?      @db.VarChar(100)
+  buyerLocale   Locale       @default(ZH)
   paymentId     String?      @db.VarChar(64) // 微信支付订单号
   paidAt        DateTime?
   downloadToken String?      @unique @db.VarChar(64)
@@ -149,6 +165,8 @@ model Category {
   id        String          @id @default(cuid())
   name      String          @db.VarChar(100)
   slug      String          @unique @db.VarChar(100)
+  nameI18n  Json?           // { zh: string, en: string }
+  slugI18n  Json?           // { zh: string, en: string }
   type      CategoryType
   posts     Post[]
   works     Work[]
@@ -159,6 +177,7 @@ model Category {
 model Tag {
   id        String          @id @default(cuid())
   name      String          @unique @db.VarChar(50)
+  nameI18n  Json?           // { zh: string, en: string }
   posts     Post[]
   works     Work[]
   tutorials VideoTutorial[]
@@ -187,13 +206,20 @@ model Media {
 model Settings {
   id            String  @id @default("settings")
   siteName      String  @default("Fan's Studio") @db.VarChar(255)
+  defaultLocale Locale  @default(ZH)
   avatar        String? @db.Text
   socialLinks   Json?   // { wechat, xiaohongshu, officialAccount, bilibili, figma, youshe, x, github }
   about         Json?   // 关于页内容
   nav           Json?   // { logoText, works, blog, about, tutorials } 导航品牌与名称
+  navI18n       Json?   // { zh: nav, en: nav }
   pageCopy      Json?   // 各页页头介绍与首页 Hero 文案
+  pageCopyI18n  Json?   // { zh: pageCopy, en: pageCopy }
+  aiAssistant   Json?   // AI 助手配置（欢迎语、引导问题、占位文案等）
+  aiAssistantI18n Json? // { zh: aiAssistant, en: aiAssistant }
+  aiModelConfig Json?   // AI 模型配置（provider、模型白名单、默认模型、前台切换开关）
   theme         Json?   // { base: "neutral", accent: "fanmihua" } 主题配置
   footer        Json?   // { copyrightText: "范米花儿", version: "0.1.0" } 页脚版权与版本
+  footerI18n    Json?   // { zh: footer, en: footer }
   updatedAt     DateTime @updatedAt
 }
 
@@ -202,7 +228,11 @@ model VideoTutorial {
   id          String    @id @default(cuid())
   title       String    @db.VarChar(255)
   slug        String    @unique @db.VarChar(255)
+  titleI18n   Json?     // { zh: string, en: string }
+  slugI18n    Json?     // { zh: string, en: string }
   description String?   @db.Text
+  descriptionI18n Json? // { zh: string, en: string }
+  seoI18n     Json?     // { zh: { title, description }, en: { title, description } }
   videoUrl    String    @db.Text   // 视频链接（B 站、YouTube 等）
   thumbnail   String?   @db.Text
   coverRatio  String    @default("3:4") @db.VarChar(10)
@@ -240,4 +270,103 @@ enum CategoryType {
   DESIGN
   DEVELOPMENT
   TUTORIAL
+}
+
+// ==================== AI 知识库模型 ====================
+enum KnowledgeSourceType {
+  POST
+  WORK
+  TUTORIAL
+  SETTINGS
+}
+
+enum KnowledgeSourceStatus {
+  ACTIVE
+  DELETED
+}
+
+enum KnowledgeAssetType {
+  IMAGE
+}
+
+enum KnowledgeJobType {
+  UPSERT_SOURCE
+  DELETE_SOURCE
+  FULL_REBUILD
+}
+
+enum KnowledgeJobStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+model KnowledgeSource {
+  id         String                @id @default(cuid())
+  sourceType KnowledgeSourceType
+  sourceId   String                @db.VarChar(191)
+  locale     Locale                @default(ZH)
+  slug       String?               @db.VarChar(255)
+  title      String                @db.VarChar(255)
+  url        String                @db.Text
+  status     KnowledgeSourceStatus @default(ACTIVE)
+  hash       String                @db.VarChar(64)
+  updatedAt  DateTime              @updatedAt
+  chunks     KnowledgeChunk[]
+  assets     KnowledgeAsset[]
+
+  @@unique([sourceType, sourceId, locale])
+  @@index([status])
+  @@index([sourceType])
+  @@index([locale])
+}
+
+model KnowledgeChunk {
+  id            String          @id @default(cuid())
+  sourceId       String
+  source         KnowledgeSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  chunkIndex     Int
+  contentText    String          @db.LongText
+  locale         Locale          @default(ZH)
+  contentTokens  Int             @default(0)
+  embedding      Json?
+  meta           Json?
+  createdAt      DateTime        @default(now())
+
+  @@unique([sourceId, chunkIndex])
+  @@index([sourceId])
+  @@index([locale])
+}
+
+model KnowledgeAsset {
+  id         String            @id @default(cuid())
+  sourceId   String
+  source     KnowledgeSource   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  assetType  KnowledgeAssetType @default(IMAGE)
+  url        String            @db.Text
+  locale     Locale            @default(ZH)
+  caption    String?           @db.VarChar(255)
+  ocrText    String?           @db.Text
+  embedding  Json?
+  width      Int?
+  height     Int?
+  hash       String?           @db.VarChar(64)
+  createdAt  DateTime          @default(now())
+
+  @@index([sourceId])
+  @@index([locale])
+}
+
+model KnowledgeSyncJob {
+  id         String             @id @default(cuid())
+  jobType    KnowledgeJobType
+  payload    Json?
+  status     KnowledgeJobStatus @default(PENDING)
+  error      String?            @db.Text
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@index([status])
+  @@index([jobType])
 }

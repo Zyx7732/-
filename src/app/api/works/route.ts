@@ -4,6 +4,9 @@ import { requireAdmin } from "@/lib/require-admin"
 import prisma from "@/lib/prisma"
 import { sanitizeWorkForPublic } from "@/lib/sanitize-work"
 import { normalizeCoverRatio } from "@/lib/cover-ratio"
+import { safeSyncKnowledgeSource } from "@/lib/ai/knowledge-trigger"
+import { DEFAULT_LOCALE, fromPrismaLocale, isLocale, LOCALE_COOKIE_KEY, normalizeLocale } from "@/lib/i18n"
+import { buildWorkI18nInput, localizeWork } from "@/lib/localized-content"
 
 export const dynamic = "force-dynamic"
 
@@ -13,8 +16,13 @@ export async function GET(request: NextRequest) {
   const slug = searchParams.get("slug")
   const all = searchParams.get("all") === "1"
   const typeParam = searchParams.get("type")
+  const locale = normalizeLocale(
+    searchParams.get("locale") ?? request.cookies.get(LOCALE_COOKIE_KEY)?.value ?? DEFAULT_LOCALE,
+  )
 
   const isAdminRole = (session?.user as { role?: string })?.role === "ADMIN"
+  const settings = await prisma.settings.findUnique({ where: { id: "settings" }, select: { defaultLocale: true } })
+  const fallbackLocale = fromPrismaLocale(settings?.defaultLocale)
 
   if (slug) {
     const work = await prisma.work.findUnique({
@@ -32,7 +40,8 @@ export async function GET(request: NextRequest) {
       price: work.price ? Number(work.price) : null,
       images: (work.images as string[]) || [],
     }
-    return NextResponse.json(isAdminRole ? row : sanitizeWorkForPublic(row))
+    const localized = localizeWork(row as unknown as Record<string, unknown>, locale, fallbackLocale)
+    return NextResponse.json(isAdminRole ? localized : sanitizeWorkForPublic(localized))
   }
 
   const isAdmin = isAdminRole
@@ -57,7 +66,8 @@ export async function GET(request: NextRequest) {
       price: w.price ? Number(w.price) : null,
       images: (w.images as string[]) || [],
     }
-    return isAdmin ? row : sanitizeWorkForPublic(row)
+    const localized = localizeWork(row as unknown as Record<string, unknown>, locale, fallbackLocale)
+    return isAdmin ? localized : sanitizeWorkForPublic(localized)
   })
   const headers = isAdmin ? undefined : { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" }
   return NextResponse.json(rows, { headers })
@@ -126,7 +136,11 @@ export async function POST(request: NextRequest) {
       status: status === "PUBLISHED" ? "PUBLISHED" : "DRAFT",
       categoryId: categoryId || null,
       authorId: check.userId,
+      ...buildWorkI18nInput(body),
     },
   })
+  if (work.status === "PUBLISHED") {
+    await safeSyncKnowledgeSource("WORK", work.id)
+  }
   return NextResponse.json(work)
 }
