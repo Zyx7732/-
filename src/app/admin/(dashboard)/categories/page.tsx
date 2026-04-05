@@ -40,11 +40,14 @@ import { TableToolbar, type BatchAction } from "@/components/admin/TableToolbar"
 import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 
 type RelatedItem = { id: string; title: string; entityType: string }
+type I18nText = { zh?: string | null; en?: string | null } | null
 
 type CategoryItem = {
   id: string
   name: string
   slug: string
+  nameI18n?: I18nText
+  slugI18n?: I18nText
   type: string
   count: number
   items: RelatedItem[]
@@ -53,6 +56,7 @@ type CategoryItem = {
 type TagItem = {
   id: string
   name: string
+  nameI18n?: I18nText
   count: number
   items: RelatedItem[]
 }
@@ -104,10 +108,12 @@ export default function CategoriesPage() {
   const [loadingCats, setLoadingCats] = useState(true)
   const [createCatOpen, setCreateCatOpen] = useState(false)
   const [newCatName, setNewCatName] = useState("")
+  const [newCatNameEn, setNewCatNameEn] = useState("")
   const [newCatType, setNewCatType] = useState("POST")
   const [savingCat, setSavingCat] = useState(false)
   const [editCat, setEditCat] = useState<CategoryItem | null>(null)
   const [editCatName, setEditCatName] = useState("")
+  const [editCatNameEn, setEditCatNameEn] = useState("")
   const [editCatSlug, setEditCatSlug] = useState("")
   const [savingEditCat, setSavingEditCat] = useState(false)
   const [deleteCat, setDeleteCat] = useState<CategoryItem | null>(null)
@@ -122,9 +128,11 @@ export default function CategoriesPage() {
   const [loadingTags, setLoadingTags] = useState(true)
   const [createTagOpen, setCreateTagOpen] = useState(false)
   const [newTagName, setNewTagName] = useState("")
+  const [newTagNameEn, setNewTagNameEn] = useState("")
   const [savingTag, setSavingTag] = useState(false)
   const [editTag, setEditTag] = useState<TagItem | null>(null)
   const [editTagName, setEditTagName] = useState("")
+  const [editTagNameEn, setEditTagNameEn] = useState("")
   const [savingEditTag, setSavingEditTag] = useState(false)
   const [deleteTag, setDeleteTag] = useState<TagItem | null>(null)
   const [deletingTag, setDeletingTag] = useState(false)
@@ -164,7 +172,11 @@ export default function CategoriesPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name: newCatName.trim(), type: newCatType }),
+        body: JSON.stringify({
+          name: newCatName.trim(),
+          type: newCatType,
+          nameI18n: { zh: newCatName.trim(), en: newCatNameEn.trim() || undefined },
+        }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -172,6 +184,7 @@ export default function CategoriesPage() {
         return
       }
       setNewCatName("")
+      setNewCatNameEn("")
       setCreateCatOpen(false)
       toast.success(t("分类已创建", "Category created"))
       fetchCategories()
@@ -188,7 +201,11 @@ export default function CategoriesPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name: editCatName.trim(), slug: editCatSlug.trim() }),
+        body: JSON.stringify({
+          name: editCatName.trim(),
+          slug: editCatSlug.trim(),
+          nameI18n: { zh: editCatName.trim(), en: editCatNameEn.trim() || undefined },
+        }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -226,7 +243,9 @@ export default function CategoriesPage() {
 
   const filteredCategories = useMemo(() => {
     return categories.filter((cat) => {
-      const matchSearch = !catSearch.trim() || cat.name.toLowerCase().includes(catSearch.toLowerCase())
+      const term = catSearch.trim().toLowerCase()
+      const names = [cat.name, cat.nameI18n?.zh, cat.nameI18n?.en].filter(Boolean).join(" ").toLowerCase()
+      const matchSearch = !term || names.includes(term)
       const matchType = catTypeFilter === "all" || cat.type === catTypeFilter
       return matchSearch && matchType
     })
@@ -301,7 +320,10 @@ export default function CategoriesPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name: newTagName.trim() }),
+        body: JSON.stringify({
+          name: newTagName.trim(),
+          nameI18n: { zh: newTagName.trim(), en: newTagNameEn.trim() || undefined },
+        }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -309,6 +331,7 @@ export default function CategoriesPage() {
         return
       }
       setNewTagName("")
+      setNewTagNameEn("")
       setCreateTagOpen(false)
       toast.success(t("标签已创建", "Tag created"))
       fetchTags()
@@ -325,7 +348,10 @@ export default function CategoriesPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name: editTagName.trim() }),
+        body: JSON.stringify({
+          name: editTagName.trim(),
+          nameI18n: { zh: editTagName.trim(), en: editTagNameEn.trim() || undefined },
+        }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -398,7 +424,7 @@ export default function CategoriesPage() {
               selectedCount={selectedCatIds.size}
               batchActions={catBatchActions}
               onClearSelection={() => setSelectedCatIds(new Set())}
-              extra={<Button onClick={() => { setNewCatName(""); setCreateCatOpen(true) }}>{t("新建分类", "New Category")}</Button>}
+              extra={<Button onClick={() => { setNewCatName(""); setNewCatNameEn(""); setCreateCatOpen(true) }}>{t("新建分类", "New Category")}</Button>}
             />
 
             <Table>
@@ -432,7 +458,12 @@ export default function CategoriesPage() {
                         <TableCell className="w-[40px]">
                           <Checkbox checked={selectedCatIds.has(cat.id)} onCheckedChange={() => toggleSelectCat(cat.id)} />
                         </TableCell>
-                        <TableCell className="font-medium">{cat.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <div>{cat.name}</div>
+                          {cat.nameI18n?.en && cat.nameI18n.en !== cat.name && (
+                            <div className="text-xs font-normal text-muted-foreground">{cat.nameI18n.en}</div>
+                          )}
+                        </TableCell>
                         <TableCell className="text-muted-foreground font-mono text-sm">
                           {cat.slug}
                         </TableCell>
@@ -464,6 +495,7 @@ export default function CategoriesPage() {
                               <DropdownMenuItem
                                 onClick={() => {
                                   setEditCatName(cat.name)
+                                  setEditCatNameEn(cat.nameI18n?.en ?? "")
                                   setEditCatSlug(cat.slug)
                                   setEditCat(cat)
                                 }}
@@ -528,9 +560,11 @@ export default function CategoriesPage() {
               expandedTagId={expandedTagId}
               setExpandedTagId={setExpandedTagId}
               setEditTagName={setEditTagName}
+              setEditTagNameEn={setEditTagNameEn}
               setEditTag={setEditTag}
               setDeleteTag={setDeleteTag}
               setNewTagName={setNewTagName}
+              setNewTagNameEn={setNewTagNameEn}
               setCreateTagOpen={setCreateTagOpen}
               fetchTags={fetchTags}
               locale={locale}
@@ -554,6 +588,15 @@ export default function CategoriesPage() {
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreateCategory()}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newCatNameEn">{t("英文名称", "English Name")}</Label>
+              <Input
+                id="newCatNameEn"
+                placeholder={t("可选，用于前台英文展示", "Optional, used on English pages")}
+                value={newCatNameEn}
+                onChange={(e) => setNewCatNameEn(e.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -590,6 +633,15 @@ export default function CategoriesPage() {
                 id="editCatName"
                 value={editCatName}
                 onChange={(e) => setEditCatName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editCatNameEn">{t("英文名称", "English Name")}</Label>
+              <Input
+                id="editCatNameEn"
+                value={editCatNameEn}
+                onChange={(e) => setEditCatNameEn(e.target.value)}
+                placeholder={t("可选，用于前台英文展示", "Optional, used on English pages")}
               />
             </div>
             <div className="space-y-2">
@@ -651,6 +703,15 @@ export default function CategoriesPage() {
                 onKeyDown={(e) => e.key === "Enter" && handleCreateTag()}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="newTagNameEn">{t("英文名称", "English Name")}</Label>
+              <Input
+                id="newTagNameEn"
+                placeholder={t("可选，用于前台英文展示", "Optional, used on English pages")}
+                value={newTagNameEn}
+                onChange={(e) => setNewTagNameEn(e.target.value)}
+              />
+            </div>
             <Button className="w-full" onClick={handleCreateTag} disabled={savingTag || !newTagName.trim()}>
               {savingTag ? t("创建中…", "Creating…") : t("创建", "Create")}
             </Button>
@@ -672,6 +733,15 @@ export default function CategoriesPage() {
                 value={editTagName}
                 onChange={(e) => setEditTagName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleEditTag()}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editTagNameEn">{t("英文名称", "English Name")}</Label>
+              <Input
+                id="editTagNameEn"
+                value={editTagNameEn}
+                onChange={(e) => setEditTagNameEn(e.target.value)}
+                placeholder={t("可选，用于前台英文展示", "Optional, used on English pages")}
               />
             </div>
             <Button className="w-full" onClick={handleEditTag} disabled={savingEditTag || !editTagName.trim()}>
@@ -719,9 +789,11 @@ function TagsTableSection({
   expandedTagId,
   setExpandedTagId,
   setEditTagName,
+  setEditTagNameEn,
   setEditTag,
   setDeleteTag,
   setNewTagName,
+  setNewTagNameEn,
   setCreateTagOpen,
   fetchTags,
   locale,
@@ -733,9 +805,11 @@ function TagsTableSection({
   expandedTagId: string | null
   setExpandedTagId: (v: string | null) => void
   setEditTagName: (v: string) => void
+  setEditTagNameEn: (v: string) => void
   setEditTag: (v: TagItem) => void
   setDeleteTag: (v: TagItem) => void
   setNewTagName: (v: string) => void
+  setNewTagNameEn: (v: string) => void
   setCreateTagOpen: (v: boolean) => void
   fetchTags: () => void
   locale: "zh" | "en"
@@ -746,7 +820,13 @@ function TagsTableSection({
   const filtered = useMemo(() => {
     const term = tagSearch.trim().toLowerCase()
     if (!term) return tags
-    return tags.filter((t) => t.name.toLowerCase().includes(term))
+    return tags.filter((tag) =>
+      [tag.name, tag.nameI18n?.zh, tag.nameI18n?.en]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(term),
+    )
   }, [tags, tagSearch])
 
   function toggleSelect(id: string) {
@@ -810,7 +890,7 @@ function TagsTableSection({
         selectedCount={selectedIds.size}
         batchActions={batchActions}
         onClearSelection={() => setSelectedIds(new Set())}
-        extra={<Button onClick={() => { setNewTagName(""); setCreateTagOpen(true) }}>{t("新建标签", "New Tag")}</Button>}
+        extra={<Button onClick={() => { setNewTagName(""); setNewTagNameEn(""); setCreateTagOpen(true) }}>{t("新建标签", "New Tag")}</Button>}
       />
       <Table>
         <TableHeader>
@@ -834,7 +914,12 @@ function TagsTableSection({
                 <TableCell className="w-[40px]">
                   <Checkbox checked={selectedIds.has(tag.id)} onCheckedChange={() => toggleSelect(tag.id)} />
                 </TableCell>
-                <TableCell className="font-medium">{tag.name}</TableCell>
+                <TableCell className="font-medium">
+                  <div>{tag.name}</div>
+                  {tag.nameI18n?.en && tag.nameI18n.en !== tag.name && (
+                    <div className="text-xs font-normal text-muted-foreground">{tag.nameI18n.en}</div>
+                  )}
+                </TableCell>
                 <TableCell>
                   {tag.count > 0 ? (
                     <button
@@ -855,7 +940,7 @@ function TagsTableSection({
                         <Button variant="ghost" size="sm">•••</Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => { setEditTagName(tag.name); setEditTag(tag) }}>{t("编辑", "Edit")}</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setEditTagName(tag.name); setEditTagNameEn(tag.nameI18n?.en ?? ""); setEditTag(tag) }}>{t("编辑", "Edit")}</DropdownMenuItem>
                       <DropdownMenuItem className="text-destructive" onClick={() => setDeleteTag(tag)}>{t("删除", "Delete")}</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

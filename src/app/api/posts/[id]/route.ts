@@ -32,6 +32,7 @@ export async function GET(
   if (post.status !== "PUBLISHED" && !isAdminRole) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
+  if (isAdminRole) return NextResponse.json(post)
   return NextResponse.json(localizePost(post as unknown as Record<string, unknown>, locale, fallbackLocale))
 }
 

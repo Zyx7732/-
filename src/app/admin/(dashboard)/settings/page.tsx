@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select"
 
 import { MiniEditor } from "@/components/admin/MiniEditor"
-import { SOCIAL_LINK_ENTRIES, isImageUrl, type SocialLinks } from "@/lib/social-links"
+import { SOCIAL_LINK_ENTRIES, getSocialEntryLabel, isImageUrl, type SocialLinks } from "@/lib/social-links"
 import {
   normalizeAboutModules,
   type AboutModules,
@@ -176,6 +176,9 @@ export default function SettingsPage() {
   const [aboutWorkTitle, setAboutWorkTitle] = useState(defaultPageCopy.aboutWorkTitle ?? "")
   const [aboutEducationTitle, setAboutEducationTitle] = useState(defaultPageCopy.aboutEducationTitle ?? "")
   const [aboutSkillsTitle, setAboutSkillsTitle] = useState(defaultPageCopy.aboutSkillsTitle ?? "")
+  const [aboutWorkTitleEn, setAboutWorkTitleEn] = useState("")
+  const [aboutEducationTitleEn, setAboutEducationTitleEn] = useState("")
+  const [aboutSkillsTitleEn, setAboutSkillsTitleEn] = useState("")
   const [coverRatioWorksDesign, setCoverRatioWorksDesign] = useState<CoverRatioId>(DEFAULT_COVER_RATIO)
   const [coverRatioWorksDev, setCoverRatioWorksDev] = useState<CoverRatioId>(DEFAULT_COVER_RATIO)
   const [coverRatioBlog, setCoverRatioBlog] = useState<CoverRatioId>(DEFAULT_COVER_RATIO)
@@ -266,6 +269,9 @@ export default function SettingsPage() {
         setAboutWorkTitle(copy.aboutWorkTitle ?? defaultPageCopy.aboutWorkTitle ?? "")
         setAboutEducationTitle(copy.aboutEducationTitle ?? defaultPageCopy.aboutEducationTitle ?? "")
         setAboutSkillsTitle(copy.aboutSkillsTitle ?? defaultPageCopy.aboutSkillsTitle ?? "")
+        setAboutWorkTitleEn(pageCopyI18n.en?.aboutWorkTitle ?? "")
+        setAboutEducationTitleEn(pageCopyI18n.en?.aboutEducationTitle ?? "")
+        setAboutSkillsTitleEn(pageCopyI18n.en?.aboutSkillsTitle ?? "")
         setCoverRatioWorksDesign(normalizeCoverRatio(copy.coverRatioWorksDesign))
         setCoverRatioWorksDev(normalizeCoverRatio(copy.coverRatioWorksDev))
         setCoverRatioBlog(normalizeCoverRatio(copy.coverRatioBlog))
@@ -393,6 +399,9 @@ export default function SettingsPage() {
               heroGreeting: heroGreeting.trim(),
               heroPrefix: heroPrefix.trim(),
               heroDesc: heroDesc.trim(),
+              aboutWorkTitle: aboutWorkTitle.trim(),
+              aboutEducationTitle: aboutEducationTitle.trim(),
+              aboutSkillsTitle: aboutSkillsTitle.trim(),
             },
             en: {
               worksDesignDesc: worksDesignDescEn.trim() || undefined,
@@ -403,6 +412,9 @@ export default function SettingsPage() {
               heroGreeting: heroGreetingEn.trim() || undefined,
               heroPrefix: heroPrefixEn.trim() || undefined,
               heroDesc: heroDescEn.trim() || undefined,
+              aboutWorkTitle: aboutWorkTitleEn.trim() || undefined,
+              aboutEducationTitle: aboutEducationTitleEn.trim() || undefined,
+              aboutSkillsTitle: aboutSkillsTitleEn.trim() || undefined,
             },
           },
           defaultLocale,
@@ -730,7 +742,8 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                {SOCIAL_LINK_ENTRIES.map(({ key, label, type }) => {
+                {SOCIAL_LINK_ENTRIES.map(({ key, label, labelEn, icon, type }) => {
+                  const socialLabel = getSocialEntryLabel({ key, label, labelEn, icon, type }, locale)
                   const socialValues: Partial<Record<keyof SocialLinks, string>> = {
                     wechat,
                     xiaohongshu,
@@ -761,7 +774,7 @@ export default function SettingsPage() {
 
                   return (
                     <div key={key} className="space-y-2">
-                      <Label htmlFor={key}>{label}</Label>
+                      <Label htmlFor={key}>{socialLabel}</Label>
                       {isEmail ? (
                         <Input
                           id={key}
@@ -776,11 +789,11 @@ export default function SettingsPage() {
                             <div className="flex items-center gap-3">
                               <img
                                 src={currentVal}
-                                alt={`${label}${t("二维码", " QR code")}`}
+                                alt={`${socialLabel}${t("二维码", " QR code")}`}
                                 className="h-24 w-24 rounded-lg border border-border object-contain"
                               />
                               <div className="space-y-2">
-                                <p className="text-sm text-muted-foreground">{t("已上传", "Uploaded ")}{label}{t("二维码", " QR code")}</p>
+                                <p className="text-sm text-muted-foreground">{t("已上传", "Uploaded ")}{socialLabel}{t("二维码", " QR code")}</p>
                                 <div className="flex gap-2">
                                   <Button
                                     type="button"
@@ -820,7 +833,7 @@ export default function SettingsPage() {
                               <div className="flex items-center gap-2">
                                 <Input
                                   id={key}
-                                  placeholder={`${label}${t("号 / 名称", " ID / Name")}`}
+                                  placeholder={`${socialLabel}${t("号 / 名称", " ID / Name")}`}
                                   value={currentVal}
                                   onChange={(e) => setter?.(e.target.value)}
                                   className="flex-1"
@@ -848,7 +861,7 @@ export default function SettingsPage() {
                                 </Button>
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                {t("填写", "Fill ")}{label}{t("号/名称，或上传二维码图片", " ID/name, or upload QR image")}
+                                {t("填写", "Fill ")}{socialLabel}{t("号/名称，或上传二维码图片", " ID/name, or upload QR image")}
                                 {key === "wechat" && t("。上传后将同步展示用户赞助邮件内，不填则不显示", ". It will be shown in sponsorship emails if set.")}
                               </p>
                             </>
@@ -1189,27 +1202,27 @@ export default function SettingsPage() {
                     <Label htmlFor="aboutWorkTitle">{t("工作经历标题", "Work Experience Title")}</Label>
                     <Input
                       id="aboutWorkTitle"
-                      placeholder={defaultPageCopy.aboutWorkTitle}
-                      value={aboutWorkTitle}
-                      onChange={(e) => setAboutWorkTitle(e.target.value)}
+                      placeholder={contentLocale === "en" ? "Work Experience" : (defaultPageCopy.aboutWorkTitle ?? "")}
+                      value={contentLocale === "en" ? aboutWorkTitleEn : aboutWorkTitle}
+                      onChange={(e) => (contentLocale === "en" ? setAboutWorkTitleEn(e.target.value) : setAboutWorkTitle(e.target.value))}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="aboutEducationTitle">{t("学习经历标题", "Education Title")}</Label>
                     <Input
                       id="aboutEducationTitle"
-                      placeholder={defaultPageCopy.aboutEducationTitle}
-                      value={aboutEducationTitle}
-                      onChange={(e) => setAboutEducationTitle(e.target.value)}
+                      placeholder={contentLocale === "en" ? "Education" : (defaultPageCopy.aboutEducationTitle ?? "")}
+                      value={contentLocale === "en" ? aboutEducationTitleEn : aboutEducationTitle}
+                      onChange={(e) => (contentLocale === "en" ? setAboutEducationTitleEn(e.target.value) : setAboutEducationTitle(e.target.value))}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="aboutSkillsTitle">{t("技能标题", "Skills Title")}</Label>
                     <Input
                       id="aboutSkillsTitle"
-                      placeholder={defaultPageCopy.aboutSkillsTitle}
-                      value={aboutSkillsTitle}
-                      onChange={(e) => setAboutSkillsTitle(e.target.value)}
+                      placeholder={contentLocale === "en" ? "Skills" : (defaultPageCopy.aboutSkillsTitle ?? "")}
+                      value={contentLocale === "en" ? aboutSkillsTitleEn : aboutSkillsTitle}
+                      onChange={(e) => (contentLocale === "en" ? setAboutSkillsTitleEn(e.target.value) : setAboutSkillsTitle(e.target.value))}
                     />
                   </div>
                 </div>

@@ -7,6 +7,16 @@ export const dynamic = "force-dynamic"
 
 type Params = { params: Promise<{ id: string }> }
 
+function toSlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9\u4e00-\u9fff-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+}
+
 export async function PUT(request: NextRequest, { params }: Params) {
   const check = await requireAdmin()
   if (!check.authorized) return check.response
@@ -38,7 +48,12 @@ export async function PUT(request: NextRequest, { params }: Params) {
     updateData.nameI18n = patchI18nObject(existing.nameI18n, nameI18n)
   }
   if (slugI18n !== undefined) {
-    updateData.slugI18n = patchI18nObject(existing.slugI18n, slugI18n)
+    const patched = patchI18nObject(existing.slugI18n, slugI18n)
+    updateData.slugI18n = {
+      ...patched,
+      zh: typeof patched.zh === "string" && patched.zh.trim() ? toSlug(patched.zh) : patched.zh,
+      en: typeof patched.en === "string" && patched.en.trim() ? toSlug(patched.en) : patched.en,
+    }
   }
 
   if (Object.keys(updateData).length === 0) {

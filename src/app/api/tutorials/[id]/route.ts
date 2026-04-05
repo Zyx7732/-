@@ -12,6 +12,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const check = await requireAdmin()
   const localeParam = new URL(request.url).searchParams.get("locale")
   const locale = isLocale(localeParam)
     ? localeParam
@@ -26,6 +27,7 @@ export async function GET(
   if (!item) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
+  if (check.authorized) return NextResponse.json(item)
   return NextResponse.json(localizeTutorial(item as unknown as Record<string, unknown>, locale, fallbackLocale))
 }
 

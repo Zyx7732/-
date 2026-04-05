@@ -16,7 +16,8 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:studio": "prisma studio",
-    "db:backfill-i18n": "npx tsx scripts/backfill-i18n-zh.ts"
+    "db:backfill-i18n": "npx tsx scripts/backfill-i18n-zh.ts",
+    "db:backfill-taxonomy-en": "npx tsx scripts/backfill-taxonomy-en.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

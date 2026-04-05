@@ -91,6 +91,8 @@ export async function GET(request: NextRequest) {
         id: c.id,
         name: localized.name,
         slug: localized.slug,
+        nameI18n: c.nameI18n,
+        slugI18n: c.slugI18n,
         type: c.type,
         count: getCategoryCount(c),
         items: getCategoryItems(c),
@@ -105,7 +107,7 @@ export async function POST(request: NextRequest) {
   if (!check.authorized) return check.response
 
   const body = await request.json()
-  const { name, type } = body
+  const { name, type, slug: inputSlug, nameI18n, slugI18n } = body
 
   if (!name || typeof name !== "string" || !name.trim()) {
     return NextResponse.json({ error: "分类名称不能为空" }, { status: 400 })
@@ -115,18 +117,34 @@ export async function POST(request: NextRequest) {
   }
 
   // 生成唯一 slug
-  let slug = toSlug(name)
+  let slug = typeof inputSlug === "string" && inputSlug.trim() ? toSlug(inputSlug) : toSlug(name)
   const existing = await prisma.category.findUnique({ where: { slug } })
   if (existing) {
     slug = `${slug}-${Date.now().toString(36)}`
   }
 
+  const normalizedName = name.trim()
+  const normalizedNameI18n = {
+    zh: normalizedName,
+    en:
+      nameI18n && typeof nameI18n === "object" && typeof (nameI18n as { en?: unknown }).en === "string"
+        ? ((nameI18n as { en: string }).en.trim() || null)
+        : null,
+  }
+  const normalizedSlugI18n = {
+    zh: slug,
+    en:
+      slugI18n && typeof slugI18n === "object" && typeof (slugI18n as { en?: unknown }).en === "string"
+        ? (toSlug((slugI18n as { en: string }).en) || null)
+        : null,
+  }
+
   const category = await prisma.category.create({
     data: {
-      name: name.trim(),
+      name: normalizedName,
       slug,
-      nameI18n: { zh: name.trim(), en: null },
-      slugI18n: { zh: slug, en: null },
+      nameI18n: normalizedNameI18n,
+      slugI18n: normalizedSlugI18n,
       type,
     },
   })

@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
       return {
         id: t.id,
         name: localized.name,
+        nameI18n: t.nameI18n,
         count: t._count.posts + t._count.works + t._count.tutorials,
         items,
       }
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
   if (!check.authorized) return check.response
 
   const body = await request.json()
-  const { name } = body
+  const { name, nameI18n } = body
 
   if (!name || typeof name !== "string" || !name.trim()) {
     return NextResponse.json({ error: "标签名称不能为空" }, { status: 400 })
@@ -66,7 +67,13 @@ export async function POST(request: NextRequest) {
   const tag = await prisma.tag.create({
     data: {
       name: name.trim(),
-      nameI18n: { zh: name.trim(), en: null },
+      nameI18n: {
+        zh: name.trim(),
+        en:
+          nameI18n && typeof nameI18n === "object" && typeof (nameI18n as { en?: unknown }).en === "string"
+            ? ((nameI18n as { en: string }).en.trim() || null)
+            : null,
+      },
     },
   })
   return NextResponse.json({ ...tag, count: 0 }, { status: 201 })

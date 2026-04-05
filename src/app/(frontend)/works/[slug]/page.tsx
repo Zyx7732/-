@@ -2,16 +2,25 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import prisma from "@/lib/prisma"
-import { getBaseUrl } from "@/lib/utils"
 import { contentToHtml } from "@/lib/render-content"
 import { jsonToPlainText } from "@/lib/content-format"
 import { defaultNav } from "@/lib/nav-config"
 import { defaultSiteName } from "@/lib/page-copy"
+import { getFrontendSettings } from "@/lib/settings-server"
+import { DEFAULT_LOCALE, fromPrismaLocale, normalizeLocale, type Locale } from "@/lib/i18n"
+import { getLocaleFromCookie } from "@/lib/i18n-server"
+import { localizeWork } from "@/lib/localized-content"
+import { withLocalePath } from "@/lib/i18n-path"
 import { PurchaseSidebar } from "./PurchaseSidebar"
 import { ImageGallery } from "@/components/frontend/ImageGallery"
 
 interface WorkDetailPageProps {
   params: Promise<{ slug: string }>
+}
+
+type WorkDetailViewProps = {
+  slug: string
+  locale?: Locale
 }
 
 /** 将 Figma 分享链接转换为 embed URL */
@@ -31,63 +40,96 @@ function figmaEmbedUrl(rawUrl: string): string | null {
 
 export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
   const { slug } = await params
+  return renderWorkDetailPage({ slug })
+}
 
-  // 直接查询数据库，只 select 渲染所需字段
-  // figmaUrl: 仅在服务端用于构造 embed iframe src，不传给客户端组件
-  // deliveryUrl: 仅用于计算 hasDeliveryUrl (boolean)，不传给客户端组件
-  const [work, settings] = await Promise.all([
-    prisma.work.findUnique({
-      where: { slug, status: "PUBLISHED" },
-      select: {
-        id: true,
-        title: true,
-        workType: true,
-        description: true,
-        content: true,
-        coverImage: true,
-        images: true,
-        price: true,
-        isFree: true,
-        figmaUrl: true,
-        deliveryUrl: true,
-        demoUrl: true,
-        demoQrCode: true,
-        currentVersion: true,
-        updatedAt: true,
-        category: { select: { name: true } },
-        tags: { select: { id: true, name: true } },
-      },
-    }),
-    fetch(`${getBaseUrl()}/api/settings`, { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : {}))
-      .catch(() => ({})) as Promise<{ nav?: unknown; siteName?: string }>,
+export async function renderWorkDetailPage({ slug, locale }: WorkDetailViewProps) {
+  const resolvedLocale = normalizeLocale(locale ?? await getLocaleFromCookie() ?? DEFAULT_LOCALE)
+  const [workRef, settingsRow] = await Promise.all([
+    prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id
+      FROM Work
+      WHERE status = 'PUBLISHED'
+        AND (
+          slug = ${slug}
+          OR JSON_UNQUOTE(JSON_EXTRACT(slugI18n, '$.zh')) = ${slug}
+          OR JSON_UNQUOTE(JSON_EXTRACT(slugI18n, '$.en')) = ${slug}
+        )
+      LIMIT 1
+    `,
+    prisma.settings.findUnique({ where: { id: "settings" }, select: { defaultLocale: true } }),
   ])
+  const workId = workRef[0]?.id
+  const work = workId
+    ? await prisma.work.findUnique({
+        where: { id: workId },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          titleI18n: true,
+          slugI18n: true,
+          workType: true,
+          description: true,
+          descriptionI18n: true,
+          content: true,
+          contentI18n: true,
+          coverImage: true,
+          images: true,
+          price: true,
+          isFree: true,
+          figmaUrl: true,
+          deliveryUrl: true,
+          demoUrl: true,
+          demoQrCode: true,
+          currentVersion: true,
+          updatedAt: true,
+          category: { select: { name: true, slug: true, nameI18n: true, slugI18n: true } },
+          tags: { select: { id: true, name: true, nameI18n: true } },
+        },
+      })
+    : null
   if (!work) notFound()
 
-  const nav = { ...defaultNav, ...(settings?.nav && typeof settings.nav === "object" ? settings.nav as Record<string, string> : {}) }
-  const isDev = work.workType === "DEVELOPMENT"
+  const fallbackLocale = fromPrismaLocale(settingsRow?.defaultLocale)
+  const localizedWork = localizeWork(
+    {
+      ...work,
+      price: work.price != null ? Number(work.price) : null,
+      images: Array.isArray(work.images) ? work.images : [],
+    } as Record<string, unknown>,
+    resolvedLocale,
+    fallbackLocale,
+  )
+  const settings = await getFrontendSettings(resolvedLocale)
+  const nav = { ...defaultNav, ...settings.nav }
+  const isDev = localizedWork.workType === "DEVELOPMENT"
   const sectionLabel = isDev ? (nav.worksDev ?? defaultNav.worksDev) : (nav.worksDesign ?? defaultNav.worksDesign)
-  const listHref = isDev ? "/works/development" : "/works/design"
+  const listHref = withLocalePath(isDev ? "/works/development" : "/works/design", resolvedLocale)
+  const homeHref = withLocalePath("/", resolvedLocale)
 
-  const imagesRaw = Array.isArray(work.images) ? work.images : []
+  const imagesRaw = Array.isArray(localizedWork.images) ? localizedWork.images : []
   const images = imagesRaw.filter((u): u is string => typeof u === "string")
-  const categoryName = work.category?.name ?? ""
-  const contentHtml = contentToHtml(work.content)
-  const bodyPlain = jsonToPlainText(work.content)
-  const hasDeliveryUrl = !!(work.deliveryUrl || work.figmaUrl)
+  const categoryName = (localizedWork.category as { name?: string } | null | undefined)?.name ?? ""
+  const tags = Array.isArray(localizedWork.tags)
+    ? (localizedWork.tags as { id: string; name: string }[])
+    : []
+  const contentHtml = contentToHtml(localizedWork.content)
+  const bodyPlain = jsonToPlainText(localizedWork.content)
+  const hasDeliveryUrl = !!(localizedWork.deliveryUrl || localizedWork.figmaUrl)
   // 只用 figmaUrl 构造嵌入预览（服务端变量，不传给客户端）
-  const embedUrl = work.figmaUrl ? figmaEmbedUrl(work.figmaUrl) : null
+  const embedUrl = localizedWork.figmaUrl ? figmaEmbedUrl(localizedWork.figmaUrl as string) : null
 
   return (
     <div className="min-h-screen px-6 md:px-12 lg:px-16 py-12 pb-28 lg:pb-16">
       <nav className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mb-10">
-        <Link href="/" className="hover:text-foreground transition-colors flex items-center gap-1 min-w-0 max-w-[30vw] sm:max-w-none truncate">
-          <i className="ri-home-4-line shrink-0" /> <span className="truncate">{settings?.siteName || defaultSiteName}</span>
+        <Link href={homeHref} className="hover:text-foreground transition-colors flex items-center gap-1 min-w-0 max-w-[30vw] sm:max-w-none truncate">
+          <i className="ri-home-4-line shrink-0" /> <span className="truncate">{settings.siteName || defaultSiteName}</span>
         </Link>
         <i className="ri-arrow-right-s-line text-muted-foreground/60 shrink-0" />
         <Link href={listHref} className="hover:text-foreground transition-colors shrink-0">{sectionLabel}</Link>
         <i className="ri-arrow-right-s-line text-muted-foreground/60 shrink-0" />
-        <span className="text-foreground truncate min-w-0 max-w-[50vw] sm:max-w-[200px]">{work.title}</span>
+        <span className="text-foreground truncate min-w-0 max-w-[50vw] sm:max-w-[200px]">{localizedWork.title as string}</span>
       </nav>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
@@ -142,18 +184,18 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
 
         <div className="lg:col-span-5">
           <PurchaseSidebar
-            workId={work.id}
-            title={work.title}
-            description={work.description ?? ""}
+            workId={localizedWork.id as string}
+            title={localizedWork.title as string}
+            description={(localizedWork.description as string | null) ?? ""}
             categoryName={categoryName}
-            tags={work.tags}
-            price={work.price != null ? Number(work.price) : null}
-            isFree={!!work.isFree}
+            tags={tags}
+            price={(localizedWork.price as number | null) ?? null}
+            isFree={!!localizedWork.isFree}
             hasDeliveryUrl={hasDeliveryUrl}
-            updatedAt={work.updatedAt ? String(work.updatedAt) : null}
-            currentVersion={work.currentVersion ?? null}
-            demoUrl={work.demoUrl ?? null}
-            demoQrCode={work.demoQrCode ?? null}
+            updatedAt={localizedWork.updatedAt ? String(localizedWork.updatedAt) : null}
+            currentVersion={(localizedWork.currentVersion as string | null) ?? null}
+            demoUrl={(localizedWork.demoUrl as string | null) ?? null}
+            demoQrCode={(localizedWork.demoQrCode as string | null) ?? null}
             isDev={isDev}
           />
         </div>

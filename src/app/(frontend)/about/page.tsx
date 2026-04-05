@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 import { FadeContent } from "@/components/react-bits"
 import { useNavConfig } from "@/hooks/useNavConfig"
 
-import { ALL_SOCIAL_ENTRIES, normalizeSocialUrl, isImageUrl, type SocialLinks } from "@/lib/social-links"
+import { ALL_SOCIAL_ENTRIES, getSocialEntryLabel, normalizeSocialUrl, isImageUrl, type SocialLinks } from "@/lib/social-links"
 import { HoverPopover } from "@/components/ui/hover-popover"
 import { CardDescriptionHtml } from "@/components/frontend/CardDescriptionHtml"
 import { normalizeAboutModules, type AboutModules } from "@/lib/about-types"
@@ -127,7 +127,8 @@ export default function AboutPage() {
               </div>
             ) : null}
             <div className="flex flex-wrap gap-3">
-              {ALL_SOCIAL_ENTRIES.map(({ key, icon, label, type }) => {
+              {ALL_SOCIAL_ENTRIES.map(({ key, icon, label, labelEn, type }) => {
+                const socialLabel = getSocialEntryLabel({ key, label, labelEn, icon, type }, locale)
                 const value = links[key]
                 if (!value?.trim()) return null
 
@@ -140,8 +141,8 @@ export default function AboutPage() {
                       content={
                         isImg ? (
                           <div className="flex flex-col items-center gap-2">
-                            <img src={trimmed} alt={`${label}${t(dict, "frontend.qr_suffix", "二维码")}`} className="w-36 h-36 rounded-lg object-contain" />
-                            <span className="text-xs text-muted-foreground">{label}</span>
+                            <img src={trimmed} alt={`${socialLabel}${t(dict, "frontend.qr_suffix", "二维码")}`} className="w-36 h-36 rounded-lg object-contain" />
+                            <span className="text-xs text-muted-foreground">{socialLabel}</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
@@ -160,7 +161,7 @@ export default function AboutPage() {
                       }
                     >
                       <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-default">
-                        {label}
+                        {socialLabel}
                       </span>
                     </HoverPopover>
                   )
@@ -170,14 +171,14 @@ export default function AboutPage() {
                   <a
                     key={key}
                     href={normalizeSocialUrl(value)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {label}
-                  </a>
-                )
-              })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {socialLabel}
+                </a>
+              )
+            })}
             </div>
           </div>
         </FadeContent>

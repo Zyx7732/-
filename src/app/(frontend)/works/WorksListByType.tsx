@@ -56,12 +56,12 @@ export function WorksListByType({
   const fallbackIcon = type === "design" ? "ri-palette-line" : "ri-code-s-slash-line"
 
   useEffect(() => {
-    fetch(`/api/works?type=${type}`)
+    fetch(`/api/works?type=${type}&locale=${locale}`)
       .then((r) => r.json())
       .then((data) => setWorks(Array.isArray(data) ? data : []))
       .catch(() => setWorks([]))
       .finally(() => setLoading(false))
-  }, [type])
+  }, [locale, type])
 
   useEffect(() => {
     if (!isVisible) {
@@ -113,7 +113,7 @@ export function WorksListByType({
         <div className="columns-2 md:columns-3 lg:columns-4 gap-5">
           {works.map((work, index) => (
             <FadeContent key={work.id} delay={0.1 + index * 0.05} className="break-inside-avoid mb-5">
-              <Link href={`/works/${work.slug}`} className="block transition-transform duration-300 hover:scale-[1.1]">
+              <Link href={withLocalePath(`/works/${work.slug}`, locale)} className="block transition-transform duration-300 hover:scale-[1.1]">
                 <GlowBorder className="group rounded-xl overflow-hidden border border-border/50 bg-card/50 backdrop-blur-sm flex flex-col">
                   <div
                     className="overflow-hidden bg-muted shrink-0 relative"

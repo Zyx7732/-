@@ -25,31 +25,36 @@ export type SocialEntryType = "url" | "text"
 export type SocialEntry = {
   key: keyof SocialLinks
   label: string
+  labelEn?: string
   icon: string
   type: SocialEntryType
 }
 
 export const SOCIAL_LINK_ENTRIES: SocialEntry[] = [
-  { key: "wechat", label: "微信", icon: "ri-wechat-line", type: "text" },
-  { key: "xiaohongshu", label: "小红书", icon: "ri-book-open-line", type: "url" },
-  { key: "officialAccount", label: "公众号", icon: "ri-wechat-2-line", type: "text" },
-  { key: "bilibili", label: "B站", icon: "ri-bilibili-line", type: "url" },
-  { key: "figma", label: "Figma", icon: "ri-figma-line", type: "url" },
-  { key: "youshe", label: "优设", icon: "ri-brush-line", type: "url" },
-  { key: "x", label: "X", icon: "ri-twitter-x-line", type: "url" },
-  { key: "github", label: "Github", icon: "ri-github-line", type: "url" },
-  { key: "email", label: "Email", icon: "ri-mail-line", type: "text" },
+  { key: "wechat", label: "微信", labelEn: "WeChat", icon: "ri-wechat-line", type: "text" },
+  { key: "xiaohongshu", label: "小红书", labelEn: "REDnote", icon: "ri-book-open-line", type: "url" },
+  { key: "officialAccount", label: "公众号", labelEn: "WeChat Official Account", icon: "ri-wechat-2-line", type: "text" },
+  { key: "bilibili", label: "B站", labelEn: "bilibili", icon: "ri-bilibili-line", type: "url" },
+  { key: "figma", label: "Figma", labelEn: "Figma", icon: "ri-figma-line", type: "url" },
+  { key: "youshe", label: "优设", labelEn: "UISDC", icon: "ri-brush-line", type: "url" },
+  { key: "x", label: "X", labelEn: "X", icon: "ri-twitter-x-line", type: "url" },
+  { key: "github", label: "GitHub", labelEn: "GitHub", icon: "ri-github-line", type: "url" },
+  { key: "email", label: "邮箱", labelEn: "Email", icon: "ri-mail-line", type: "text" },
 ]
 
 /** 兼容旧数据：微博、Dribbble、Behance 仍可显示 */
 export const LEGACY_SOCIAL_ENTRIES: SocialEntry[] = [
-  { key: "weibo", label: "微博", icon: "ri-weibo-line", type: "url" },
-  { key: "dribbble", label: "Dribbble", icon: "ri-dribbble-line", type: "url" },
-  { key: "behance", label: "Behance", icon: "ri-behance-line", type: "url" },
+  { key: "weibo", label: "微博", labelEn: "Weibo", icon: "ri-weibo-line", type: "url" },
+  { key: "dribbble", label: "Dribbble", labelEn: "Dribbble", icon: "ri-dribbble-line", type: "url" },
+  { key: "behance", label: "Behance", labelEn: "Behance", icon: "ri-behance-line", type: "url" },
 ]
 
 /** 首页/关于页展示用：先新 8 项再兼容旧 3 项，有值的才展示 */
 export const ALL_SOCIAL_ENTRIES = [...SOCIAL_LINK_ENTRIES, ...LEGACY_SOCIAL_ENTRIES]
+
+export function getSocialEntryLabel(entry: SocialEntry, locale: "zh" | "en" = "zh"): string {
+  return locale === "en" ? entry.labelEn ?? entry.label : entry.label
+}
 
 export function normalizeSocialUrl(url: string): string {
   const trimmed = (url ?? "").trim()

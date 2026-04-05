@@ -10,7 +10,7 @@ import { CardDescriptionHtml } from "@/components/frontend/CardDescriptionHtml"
 import { getBeijingVolLabel } from "@/lib/date-util"
 import { defaultNav } from "@/lib/nav-config"
 import { defaultPageCopy, defaultSiteName, resolveFrontendSectionVisibility, type PageCopy } from "@/lib/page-copy"
-import { ALL_SOCIAL_ENTRIES, SOCIAL_LINK_ENTRIES, normalizeSocialUrl, isImageUrl } from "@/lib/social-links"
+import { ALL_SOCIAL_ENTRIES, SOCIAL_LINK_ENTRIES, getSocialEntryLabel, normalizeSocialUrl, isImageUrl } from "@/lib/social-links"
 import { HoverPopover } from "@/components/ui/hover-popover"
 import { CoverImage } from "@/components/frontend/CoverImage"
 import type { AboutModules } from "@/lib/about-types"
@@ -132,6 +132,7 @@ export default function HomePage() {
         siteName={heroDisplayName}
         fallbackSocialLinks={contextSocialLinks}
         aboutLabel={nav.about ?? defaultNav.about ?? ""}
+        locale={locale}
         dict={dict}
       />
       {sectionVisibility.worksDesign && (
@@ -170,6 +171,7 @@ export default function HomePage() {
         socialLinks={settings?.socialLinks ?? contextSocialLinks ?? undefined}
         version={settings?.footer?.version ?? APP_VERSION}
         author={settings?.footer?.copyrightText ?? APP_AUTHOR}
+        locale={locale}
         dict={dict}
       />
     </div>
@@ -229,6 +231,7 @@ function HeroSection({
   siteName: heroSiteName,
   fallbackSocialLinks,
   aboutLabel,
+  locale,
   dict,
 }: {
   settings: Settings | null
@@ -236,6 +239,7 @@ function HeroSection({
   siteName?: string
   fallbackSocialLinks?: Record<string, string | undefined> | null
   aboutLabel?: string
+  locale: "zh" | "en"
   dict: I18nDict
 }) {
   const openAssistant = (question?: string, autoSend = false) => {
@@ -341,7 +345,8 @@ function HeroSection({
               {aboutLabel || t(dict, "frontend.hero_about", "关于")}
             </Link>
             <span className="text-border">·</span>
-            {SOCIAL_LINK_ENTRIES.map(({ key, label, icon, type }) => {
+            {SOCIAL_LINK_ENTRIES.map(({ key, label, labelEn, icon, type }) => {
+              const socialLabel = getSocialEntryLabel({ key, label, labelEn, icon, type }, locale)
               const value = links[key]
               if (!value?.trim()) return null
               if (type === "text") {
@@ -352,8 +357,8 @@ function HeroSection({
                     content={
                       isImageUrl(trimmed) ? (
                         <div className="flex flex-col items-center gap-2">
-                          <img src={trimmed} alt={`${label}${t(dict, "frontend.qr_suffix", "二维码")}`} className="w-36 h-36 rounded-lg object-contain" />
-                          <span className="text-xs text-muted-foreground">{label}</span>
+                          <img src={trimmed} alt={`${socialLabel}${t(dict, "frontend.qr_suffix", "二维码")}`} className="w-36 h-36 rounded-lg object-contain" />
+                          <span className="text-xs text-muted-foreground">{socialLabel}</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
@@ -367,14 +372,14 @@ function HeroSection({
                     }
                   >
                     <span className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-default">
-                      {label}
+                      {socialLabel}
                     </span>
                   </HoverPopover>
                 )
               }
               return (
                 <a key={key} href={normalizeSocialUrl(value)} target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  {label}
+                  {socialLabel}
                 </a>
               )
             })}
@@ -685,6 +690,7 @@ function FooterSection({
   socialLinks,
   version,
   author,
+  locale,
   dict,
 }: {
   settings: Settings | null
@@ -692,6 +698,7 @@ function FooterSection({
   socialLinks?: Record<string, string | undefined> | null
   version: string
   author: string
+  locale: "zh" | "en"
   dict: I18nDict
 }) {
   const links = socialLinks ?? settings?.socialLinks ?? {}
@@ -718,7 +725,8 @@ function FooterSection({
           />
 
           <div className="flex items-center gap-3 flex-wrap">
-            {ALL_SOCIAL_ENTRIES.map(({ key, label, icon, type }) => {
+            {ALL_SOCIAL_ENTRIES.map(({ key, label, labelEn, icon, type }) => {
+              const socialLabel = getSocialEntryLabel({ key, label, labelEn, icon, type }, locale)
               const value = links[key]
               if (!value?.trim()) return null
               if (type === "text") {
@@ -729,8 +737,8 @@ function FooterSection({
                     content={
                       isImageUrl(trimmed) ? (
                         <div className="flex flex-col items-center gap-2">
-                          <img src={trimmed} alt={`${label}${t(dict, "frontend.qr_suffix", "二维码")}`} className="w-36 h-36 rounded-lg object-contain" />
-                          <span className="text-xs text-muted-foreground">{label}</span>
+                          <img src={trimmed} alt={`${socialLabel}${t(dict, "frontend.qr_suffix", "二维码")}`} className="w-36 h-36 rounded-lg object-contain" />
+                          <span className="text-xs text-muted-foreground">{socialLabel}</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
@@ -744,7 +752,7 @@ function FooterSection({
                     }
                   >
                     <span className="text-xs text-muted-foreground/50 hover:text-foreground transition-colors cursor-default">
-                      {label}
+                      {socialLabel}
                     </span>
                   </HoverPopover>
                 )
@@ -757,7 +765,7 @@ function FooterSection({
                   rel="noopener noreferrer"
                   className="text-xs text-muted-foreground/50 hover:text-foreground transition-colors"
                 >
-                  {label}
+                  {socialLabel}
                 </a>
               )
             })}

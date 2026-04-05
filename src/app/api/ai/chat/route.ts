@@ -885,13 +885,19 @@ function buildSSE(payload: ChatPayload): NextResponse {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    const locale = body?.locale === "en" ? "en" : "zh"
     let assistantConfig = defaultAIAssistantConfig
     try {
       const settings = await prisma.settings.findUnique({
         where: { id: "settings" },
-        select: { aiAssistant: true },
+        select: { aiAssistant: true, aiAssistantI18n: true },
       })
-      assistantConfig = normalizeAIAssistantConfig(settings?.aiAssistant)
+      const aiAssistantI18n =
+        settings?.aiAssistantI18n && typeof settings.aiAssistantI18n === "object"
+          ? (settings.aiAssistantI18n as Record<string, unknown>)
+          : null
+      const localizedAssistant = aiAssistantI18n?.[locale] ?? settings?.aiAssistant
+      assistantConfig = normalizeAIAssistantConfig(localizedAssistant)
     } catch {
       assistantConfig = { ...defaultAIAssistantConfig }
     }
@@ -905,7 +911,6 @@ export async function POST(request: NextRequest) {
     const cacheTtlMs = Math.max(30, guardrails.cacheTtlSeconds) * 1000
     const ip = getClientIp(request)
     const message = typeof body?.message === "string" ? body.message.trim() : ""
-    const locale = body?.locale === "en" ? "en" : "zh"
     const isEn = locale === "en"
     const t = (zh: string, en: string) => (isEn ? en : zh)
     const listSep = isEn ? "; " : "；"

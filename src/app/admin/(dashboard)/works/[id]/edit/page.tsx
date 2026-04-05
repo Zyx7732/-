@@ -70,7 +70,8 @@ export default function EditWorkPage() {
   const [slugEn, setSlugEn] = useState("")
   const [description, setDescription] = useState("")
   const [descriptionEn, setDescriptionEn] = useState("")
-  const [content, setContent] = useState<Block[] | null>(null)
+  const [contentZh, setContentZh] = useState<Block[] | null>(null)
+  const [contentEn, setContentEn] = useState<Block[] | null>(null)
   const [coverImage, setCoverImage] = useState("")
   const [figmaUrl, setFigmaUrl] = useState("")
   const [deliveryUrl, setDeliveryUrl] = useState("")
@@ -118,7 +119,8 @@ export default function EditWorkPage() {
         setWorkType(work.workType === "DEVELOPMENT" ? "DEVELOPMENT" : "DESIGN")
         setDescription(work.description ?? "")
         setDescriptionEn(work.descriptionI18n?.en ?? "")
-        setContent(getInitialContentForEditor(work.content))
+        setContentZh(getInitialContentForEditor(work.contentI18n?.zh ?? work.content))
+        setContentEn(getInitialContentForEditor(work.contentI18n?.en ?? null))
         setCoverImage(work.coverImage ?? "")
         setFigmaUrl(work.figmaUrl ?? "")
         setDeliveryUrl(work.deliveryUrl ?? "")
@@ -332,7 +334,7 @@ export default function EditWorkPage() {
           slug: slug.trim(),
           workType,
           description: description.trim() || null,
-          content: content ?? undefined,
+          content: contentZh ?? undefined,
           coverImage: coverImage.trim() || "",
           figmaUrl: figmaUrl.trim() || null,
           deliveryUrl: deliveryUrl.trim() || null,
@@ -354,6 +356,10 @@ export default function EditWorkPage() {
           descriptionI18n: {
             zh: description.trim() || undefined,
             en: descriptionEn.trim() || undefined,
+          },
+          contentI18n: {
+            zh: contentZh ?? undefined,
+            en: contentEn ?? undefined,
           },
         }),
       })
@@ -552,8 +558,8 @@ export default function EditWorkPage() {
       {/* ====== Tab 2: 详细内容 ====== */}
       <TabsContent value="content" className="pt-4">
         <Editor
-          value={content}
-          onChange={setContent}
+          value={contentLocale === "en" ? contentEn : contentZh}
+          onChange={contentLocale === "en" ? setContentEn : setContentZh}
           placeholder={t("可填写作品详细介绍、排版与链接…", "Write detailed intro, layout and links...")}
           minHeight="calc(100dvh - 156px)"
           entityType={workType === "DESIGN" ? "WORK_DESIGN" : "WORK_DEVELOPMENT"}

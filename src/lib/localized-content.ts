@@ -1,6 +1,6 @@
 import type { Locale } from "@/lib/i18n"
 import { toI18nObject, toI18nText } from "@/lib/i18n-content"
-import { resolveI18nObject, resolveI18nText } from "@/lib/i18n"
+import { DEFAULT_LOCALE, resolveI18nObject, resolveI18nText } from "@/lib/i18n"
 
 function localeText(obj: unknown, locale: Locale, fallback: Locale): string | null {
   if (!obj || typeof obj !== "object") return null
@@ -13,47 +13,108 @@ function localeObj<T>(obj: unknown, locale: Locale, fallback: Locale): T | null 
   return resolveI18nObject(obj as { zh?: T | null; en?: T | null }, locale, fallback)
 }
 
+function resolveTextWithLegacy(
+  i18nValue: unknown,
+  legacyValue: string | null | undefined,
+  locale: Locale,
+  fallback: Locale = DEFAULT_LOCALE,
+): string | null {
+  if (i18nValue && typeof i18nValue === "object") {
+    const exact = ((i18nValue as { [key: string]: unknown })[locale] ?? "") as string | null
+    if (typeof exact === "string" && exact.trim()) return exact.trim()
+  }
+  if (typeof legacyValue === "string" && legacyValue.trim()) return legacyValue.trim()
+  return localeText(i18nValue, locale, fallback)
+}
+
+function resolveObjectWithLegacy<T>(
+  i18nValue: unknown,
+  legacyValue: T | null | undefined,
+  locale: Locale,
+  fallback: Locale = DEFAULT_LOCALE,
+): T | null {
+  if (i18nValue && typeof i18nValue === "object") {
+    const exact = (i18nValue as { [key: string]: T | null | undefined })[locale]
+    if (exact != null) return exact
+  }
+  if (legacyValue != null) return legacyValue
+  return localeObj<T>(i18nValue, locale, fallback)
+}
+
 export function localizePost<T extends Record<string, unknown>>(row: T, locale: Locale, fallback: Locale): T {
   return {
     ...row,
-    title: localeText(row.titleI18n, locale, fallback) ?? (row.title as string),
-    slug: localeText(row.slugI18n, locale, fallback) ?? (row.slug as string),
-    excerpt: localeText(row.excerptI18n, locale, fallback) ?? (row.excerpt as string | null),
-    content: localeObj(row.contentI18n, locale, fallback) ?? row.content,
+    title: resolveTextWithLegacy(row.titleI18n, row.title as string, locale, fallback) ?? (row.title as string),
+    slug: resolveTextWithLegacy(row.slugI18n, row.slug as string, locale, fallback) ?? (row.slug as string),
+    excerpt: resolveTextWithLegacy(row.excerptI18n, row.excerpt as string | null, locale, fallback) ?? (row.excerpt as string | null),
+    content: resolveObjectWithLegacy(row.contentI18n, row.content, locale, fallback) ?? row.content,
+    category:
+      row.category && typeof row.category === "object"
+        ? localizeCategory(row.category as Record<string, unknown>, locale, fallback)
+        : row.category,
+    tags: Array.isArray(row.tags)
+      ? row.tags.map((tag) =>
+          tag && typeof tag === "object"
+            ? localizeTag(tag as Record<string, unknown>, locale, fallback)
+            : tag,
+        )
+      : row.tags,
   }
 }
 
 export function localizeWork<T extends Record<string, unknown>>(row: T, locale: Locale, fallback: Locale): T {
   return {
     ...row,
-    title: localeText(row.titleI18n, locale, fallback) ?? (row.title as string),
-    slug: localeText(row.slugI18n, locale, fallback) ?? (row.slug as string),
-    description: localeText(row.descriptionI18n, locale, fallback) ?? (row.description as string | null),
-    content: localeObj(row.contentI18n, locale, fallback) ?? row.content,
+    title: resolveTextWithLegacy(row.titleI18n, row.title as string, locale, fallback) ?? (row.title as string),
+    slug: resolveTextWithLegacy(row.slugI18n, row.slug as string, locale, fallback) ?? (row.slug as string),
+    description: resolveTextWithLegacy(row.descriptionI18n, row.description as string | null, locale, fallback) ?? (row.description as string | null),
+    content: resolveObjectWithLegacy(row.contentI18n, row.content, locale, fallback) ?? row.content,
+    category:
+      row.category && typeof row.category === "object"
+        ? localizeCategory(row.category as Record<string, unknown>, locale, fallback)
+        : row.category,
+    tags: Array.isArray(row.tags)
+      ? row.tags.map((tag) =>
+          tag && typeof tag === "object"
+            ? localizeTag(tag as Record<string, unknown>, locale, fallback)
+            : tag,
+        )
+      : row.tags,
   }
 }
 
 export function localizeTutorial<T extends Record<string, unknown>>(row: T, locale: Locale, fallback: Locale): T {
   return {
     ...row,
-    title: localeText(row.titleI18n, locale, fallback) ?? (row.title as string),
-    slug: localeText(row.slugI18n, locale, fallback) ?? (row.slug as string),
-    description: localeText(row.descriptionI18n, locale, fallback) ?? (row.description as string | null),
+    title: resolveTextWithLegacy(row.titleI18n, row.title as string, locale, fallback) ?? (row.title as string),
+    slug: resolveTextWithLegacy(row.slugI18n, row.slug as string, locale, fallback) ?? (row.slug as string),
+    description: resolveTextWithLegacy(row.descriptionI18n, row.description as string | null, locale, fallback) ?? (row.description as string | null),
+    category:
+      row.category && typeof row.category === "object"
+        ? localizeCategory(row.category as Record<string, unknown>, locale, fallback)
+        : row.category,
+    tags: Array.isArray(row.tags)
+      ? row.tags.map((tag) =>
+          tag && typeof tag === "object"
+            ? localizeTag(tag as Record<string, unknown>, locale, fallback)
+            : tag,
+        )
+      : row.tags,
   }
 }
 
 export function localizeCategory<T extends Record<string, unknown>>(row: T, locale: Locale, fallback: Locale): T {
   return {
     ...row,
-    name: localeText(row.nameI18n, locale, fallback) ?? (row.name as string),
-    slug: localeText(row.slugI18n, locale, fallback) ?? (row.slug as string),
+    name: resolveTextWithLegacy(row.nameI18n, row.name as string, locale, fallback) ?? (row.name as string),
+    slug: resolveTextWithLegacy(row.slugI18n, row.slug as string, locale, fallback) ?? (row.slug as string),
   }
 }
 
 export function localizeTag<T extends Record<string, unknown>>(row: T, locale: Locale, fallback: Locale): T {
   return {
     ...row,
-    name: localeText(row.nameI18n, locale, fallback) ?? (row.name as string),
+    name: resolveTextWithLegacy(row.nameI18n, row.name as string, locale, fallback) ?? (row.name as string),
   }
 }
 

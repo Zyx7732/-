@@ -38,8 +38,8 @@ export async function GET(
     price: work.price ? Number(work.price) : null,
     images: (work.images as string[]) || [],
   }
+  if (isAdminRole) return NextResponse.json(row)
   const localized = localizeWork(row as unknown as Record<string, unknown>, locale, fallbackLocale)
-  if (isAdminRole) return NextResponse.json(localized)
   return NextResponse.json({
     ...sanitizeWorkForPublic(localized),
     _deliveryRedacted: true,

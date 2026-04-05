@@ -140,6 +140,7 @@ export default function AdminAIKnowledgePage() {
     zh: defaultAIAssistantConfig,
     en: defaultAIAssistantConfig,
   })
+  const [copyLocale, setCopyLocale] = useState<"zh" | "en">(locale === "en" ? "en" : "zh")
   const [manualRows, setManualRows] = useState<ManualKnowledgeRow[]>([])
 
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -199,6 +200,27 @@ export default function AdminAIKnowledgePage() {
     void loadData()
   }, [loadData])
 
+  useEffect(() => {
+    setCopyLocale(locale === "en" ? "en" : "zh")
+  }, [locale])
+
+  useEffect(() => {
+    const nextManual = [...assistantI18n[copyLocale].manualKnowledge].sort((a, b) => a.sortOrder - b.sortOrder)
+    setManualRows(nextManual)
+  }, [assistantI18n, copyLocale])
+
+  function syncManualRows(nextRows: ManualKnowledgeRow[]) {
+    const normalizedRows = nextRows.map((item, index) => ({ ...item, sortOrder: index }))
+    setManualRows(normalizedRows)
+    setAssistantI18n((prev) => ({
+      ...prev,
+      [copyLocale]: {
+        ...prev[copyLocale],
+        manualKnowledge: normalizedRows,
+      },
+    }))
+  }
+
   function openCreateDialog() {
     setEditingIndex(null)
     setDraft(createManualKnowledgeRow(manualRows.length))
@@ -238,27 +260,27 @@ export default function AdminAIKnowledgePage() {
       return
     }
 
-    setManualRows((prev) => {
-      if (editingIndex == null) {
-        return [...prev, { ...next, sortOrder: prev.length }]
-      }
-      const cloned = [...prev]
-      if (!cloned[editingIndex]) return prev
+    if (editingIndex == null) {
+      syncManualRows([...manualRows, { ...next, sortOrder: manualRows.length }])
+    } else {
+      const cloned = [...manualRows]
+      if (!cloned[editingIndex]) return
       cloned[editingIndex] = { ...next, sortOrder: editingIndex }
-      return cloned
-    })
+      syncManualRows(cloned)
+    }
 
     handleDialogOpenChange(false)
   }
 
   function removeManualRow(index: number) {
-    setManualRows((prev) => prev.filter((_, i) => i !== index).map((item, order) => ({ ...item, sortOrder: order })))
+    syncManualRows(manualRows.filter((_, i) => i !== index))
   }
 
   async function handleSaveManualKnowledge() {
     setSavingManual(true)
     try {
-      const nextManual = manualRows
+      const buildManualPayload = (rows: ManualKnowledgeRow[]) =>
+        rows
         .map((item, index) => ({
           id: item.id.trim(),
           question: item.question.trim(),
@@ -272,22 +294,25 @@ export default function AdminAIKnowledgePage() {
         }))
         .filter((item) => item.question && item.answer)
 
+      const zhManual = buildManualPayload(assistantI18n.zh.manualKnowledge)
+      const enManual = buildManualPayload(assistantI18n.en.manualKnowledge)
+
       const payload = normalizeAIAssistantConfig({
         ...assistantConfig,
-        manualKnowledge: nextManual,
+        manualKnowledge: zhManual,
       })
       const payloadI18n: AssistantI18nState = {
         zh: normalizeAIAssistantConfig({
           ...assistantI18n.zh,
           retrievalSources: payload.retrievalSources,
           manualKnowledgeMode: payload.manualKnowledgeMode,
-          manualKnowledge: nextManual,
+          manualKnowledge: zhManual,
         }),
         en: normalizeAIAssistantConfig({
           ...assistantI18n.en,
           retrievalSources: payload.retrievalSources,
           manualKnowledgeMode: payload.manualKnowledgeMode,
-          manualKnowledge: nextManual,
+          manualKnowledge: enManual,
         }),
       }
 
@@ -306,7 +331,6 @@ export default function AdminAIKnowledgePage() {
       const localized = normalizeAssistantI18n(data?.aiAssistantI18n, data?.aiAssistant)
       setAssistantConfig(normalized)
       setAssistantI18n(localized)
-      setManualRows([...normalized.manualKnowledge].sort((a, b) => a.sortOrder - b.sortOrder))
       toast.success(t("人工知识库已保存", "Manual knowledge saved"))
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("保存失败", "Save failed"))
@@ -402,10 +426,7 @@ export default function AdminAIKnowledgePage() {
       return
     }
 
-    setManualRows((prev) => {
-      const next = [...prev, ...imported]
-      return next.map((item, index) => ({ ...item, sortOrder: index }))
-    })
+    syncManualRows([...manualRows, ...imported])
     toast.success(t(`已导入 ${imported.length} 条知识，记得点击“保存人工知识库”`, `Imported ${imported.length} rows. Remember to save manual knowledge.`))
   }
 
@@ -436,6 +457,23 @@ export default function AdminAIKnowledgePage() {
           <CardDescription>{t("新增和编辑使用表单弹窗，表格仅用于浏览与管理。", "Use form dialogs to create/edit; table is for browsing and management.")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="inline-flex items-center rounded-lg border border-border/70 p-1">
+            <button
+              type="button"
+              className={`rounded-md px-3 py-1.5 text-xs ${copyLocale === "zh" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setCopyLocale("zh")}
+            >
+              中文
+            </button>
+            <button
+              type="button"
+              className={`rounded-md px-3 py-1.5 text-xs ${copyLocale === "en" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setCopyLocale("en")}
+            >
+              English
+            </button>
+          </div>
+
           <div className="rounded-xl border border-border/60 bg-card/40 p-3 space-y-2">
             <p className="text-xs text-muted-foreground">{t("检索模块（决定主回答会检索哪些内容）", "Retrieval sources (determine what main answer searches)")}</p>
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
@@ -582,7 +620,7 @@ export default function AdminAIKnowledgePage() {
                           className="accent-black"
                           checked={row.enabled}
                           onChange={(e) => {
-                            setManualRows((prev) => prev.map((item, i) => (i === index ? { ...item, enabled: e.target.checked } : item)))
+                            syncManualRows(manualRows.map((item, i) => (i === index ? { ...item, enabled: e.target.checked } : item)))
                           }}
                         />
                       </TableCell>
@@ -592,9 +630,7 @@ export default function AdminAIKnowledgePage() {
                           className="accent-black"
                           checked={row.showAsQuickQuestion}
                           onChange={(e) => {
-                            setManualRows((prev) =>
-                              prev.map((item, i) => (i === index ? { ...item, showAsQuickQuestion: e.target.checked } : item)),
-                            )
+                            syncManualRows(manualRows.map((item, i) => (i === index ? { ...item, showAsQuickQuestion: e.target.checked } : item)))
                           }}
                         />
                       </TableCell>
