@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "npx prisma generate && next build",
+    "export": "npx prisma generate && next build && next export",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "prisma generate",

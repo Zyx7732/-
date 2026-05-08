@@ -136,3 +136,26 @@ fanstudio/
 ## License
 
 MIT
+
+## 部署到 GitHub Pages（静态站）
+
+项目已添加静态导出支持与 GitHub Actions 工作流：在推送到 `main` 分支时会自动构建并将 `out/` 目录部署到 `gh-pages` 分支。
+
+快速步骤：
+
+1. 在 GitHub 上新建一个仓库（例如 `fanstudio`）。
+2. 本地初始化并推送：
+
+```bash
+git init
+git add .
+git commit -m "Initial commit"
+git branch -M main
+git remote add origin https://github.com/<your-username>/<repo>.git
+git push -u origin main
+```
+
+3. 等待 GitHub Actions 运行（Actions -> Workflow），构建成功后 Pages 会在 `gh-pages` 分支上生成静态文件。
+
+注意：如果你希望站点通过 `https://<your-username>.github.io/<repo>/` 访问，且出现资源路径问题，请在 `next.config.ts` 中设置 `basePath` 为 `/<repo>`，并将 `assetPrefix` 指向相同路径，或者部署为用户/组织主页（仓库名为 `<your-username>.github.io`）。
+
