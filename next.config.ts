@@ -10,9 +10,13 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "cdn.jsdelivr.net" },
     ],
   },
-  // 在 Vercel 上部署应使用默认运行时（服务器/Edge），
-  // 因此不设置 `output: "export"`。如果你仍需静态导出，
-  // 请使用 `npm run export` 或保留这项设置。
+  // 为了部署到 GitHub Pages（项目页），启用静态导出并设置
+  // basePath 与 assetPrefix 以匹配仓库名，这样生成的静态资源路径
+  // 会以 `/-blog/` 为前缀，从而在 https://<user>.github.io/-blog/ 正常加载。
+  output: "export",
+  trailingSlash: true,
+  basePath: "/-blog",
+  assetPrefix: "/-blog/",
 };
 
 export default nextConfig;

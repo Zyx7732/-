@@ -8,7 +8,7 @@ import { getLocaleFromCookie } from "@/lib/i18n-server"
 import "remixicon/fonts/remixicon.css"
 import "./globals.css"
 
-export const dynamic = "force-dynamic"
+export const dynamic = "force-static"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
