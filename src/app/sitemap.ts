@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next"
 import prisma from "@/lib/prisma"
 
+export const dynamic = "force-static"
+
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_DOMAIN
   ? `https://${process.env.NEXT_PUBLIC_SITE_DOMAIN}`
   : "http://localhost:3000"

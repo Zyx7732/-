@@ -10,10 +10,9 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "cdn.jsdelivr.net" },
     ],
   },
-  // 为静态导出（next export）启用输出模式
-  output: "export",
-  // 使用 trailingSlash 可让导出的页面路径更兼容 GitHub Pages
-  trailingSlash: true,
+  // 在 Vercel 上部署应使用默认运行时（服务器/Edge），
+  // 因此不设置 `output: "export"`。如果你仍需静态导出，
+  // 请使用 `npm run export` 或保留这项设置。
 };
 
 export default nextConfig;

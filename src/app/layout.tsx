@@ -36,8 +36,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const description = pageCopy.siteDescription?.trim() || defaultSiteDescription
   const siteFavicon = pageCopy.siteFavicon?.trim()
   const defaultFavicon = row?.updatedAt
-    ? `/icon?default=${row.updatedAt.getTime()}`
-    : "/icon"
+    ? `/icon.svg?default=${row.updatedAt.getTime()}`
+    : "/icon.svg"
   const favicon = siteFavicon || defaultFavicon
 
   return {
