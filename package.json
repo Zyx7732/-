@@ -10,7 +10,7 @@
     "dev": "next dev",
     "build": "npx prisma generate && next build",
     "export": "npx prisma generate && next build && next export",
-    "export:static": "sh -c 'npx prisma generate && if [ -d src/app/api ]; then mv src/app/api src/app/_api_disabled; fi && if [ -d src/app/admin ]; then mv src/app/admin src/app/_admin_disabled; fi && next build && next export && if [ -d src/app/_api_disabled ]; then mv src/app/_api_disabled src/app/api; fi && if [ -d src/app/_admin_disabled ]; then mv src/app/_admin_disabled src/app/admin; fi'",
+    "export:static": "sh -c 'npx prisma generate && if [ -d src/app/api ]; then mv src/app/api src/app/_api_disabled; fi && next build && next export; if [ -d src/app/_api_disabled ]; then mv src/app/_api_disabled src/app/api; fi'",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "prisma generate",

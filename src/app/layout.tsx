@@ -1,44 +1,46 @@
-import type { Metadata, Viewport } from "next"
-import { Geist, Geist_Mono, Playfair_Display } from "next/font/google"
-import { Toaster } from "@/components/ui/sonner"
-import { getSettingsRow } from "@/lib/settings-db"
-import { normalizeSiteName, defaultSiteDescription } from "@/lib/page-copy"
-import type { PageCopy } from "@/lib/page-copy"
-import { getLocaleFromCookie } from "@/lib/i18n-server"
-import "remixicon/fonts/remixicon.css"
-import "./globals.css"
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
+import { getSettingsRow } from "@/lib/settings-db";
+import { normalizeSiteName, defaultSiteDescription } from "@/lib/page-copy";
+import type { PageCopy } from "@/lib/page-copy";
+import { getLocaleFromCookie } from "@/lib/i18n-server";
+import "remixicon/fonts/remixicon.css";
+import "./globals.css";
 
-export const dynamic = "force-static"
+export const dynamic = "force-dynamic";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
-})
+});
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
-})
+});
 
 const playfair = Playfair_Display({
   variable: "--font-serif",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800", "900"],
   style: ["normal", "italic"],
-})
+});
 
 export async function generateMetadata(): Promise<Metadata> {
-  const row = await getSettingsRow()
-  const siteName = normalizeSiteName(row?.siteName)
-  const pageCopy = row?.pageCopy && typeof row.pageCopy === "object"
-    ? (row.pageCopy as PageCopy)
-    : {}
-  const description = pageCopy.siteDescription?.trim() || defaultSiteDescription
-  const siteFavicon = pageCopy.siteFavicon?.trim()
+  const row = await getSettingsRow();
+  const siteName = normalizeSiteName(row?.siteName);
+  const pageCopy =
+    row?.pageCopy && typeof row.pageCopy === "object"
+      ? (row.pageCopy as PageCopy)
+      : {};
+  const description =
+    pageCopy.siteDescription?.trim() || defaultSiteDescription;
+  const siteFavicon = pageCopy.siteFavicon?.trim();
   const defaultFavicon = row?.updatedAt
     ? `/icon.svg?default=${row.updatedAt.getTime()}`
-    : "/icon.svg"
-  const favicon = siteFavicon || defaultFavicon
+    : "/icon.svg";
+  const favicon = siteFavicon || defaultFavicon;
 
   return {
     title: {
@@ -51,25 +53,25 @@ export async function generateMetadata(): Promise<Metadata> {
       apple: favicon,
       shortcut: favicon,
     },
-  }
+  };
 }
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-}
+};
 
 export default async function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
-  const locale = await getLocaleFromCookie()
+  const locale = await getLocaleFromCookie();
   return (
     <html lang={locale === "en" ? "en" : "zh-CN"} suppressHydrationWarning>
       <head>
-        {process.env.NODE_ENV === 'development' && (
+        {process.env.NODE_ENV === "development" && (
           <script
             src="https://mcp.figma.com/mcp/html-to-design/capture.js"
             async
@@ -84,5 +86,5 @@ export default async function RootLayout({
         <Toaster />
       </body>
     </html>
-  )
+  );
 }

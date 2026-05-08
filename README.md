@@ -3,6 +3,7 @@
 一个面向设计师与独立创作者的开源个人网站模板，包含前台展示、后台管理、内容发布、作品售卖与 AI 助手能力。
 
 这个仓库适合作为以下场景的起点：
+
 - 个人作品集网站
 - 设计师 / Design Engineer 个人主页
 - 带后台管理的内容站
@@ -71,6 +72,7 @@ npm run dev
 ```
 
 默认访问地址：
+
 - 前台：`http://localhost:3000`
 - 后台：`http://localhost:3000/admin`
 
@@ -79,17 +81,20 @@ npm run dev
 请使用你自己的服务器、域名、环境变量和进程管理方式。仓库中的公开文档只保留泛化说明，不包含任何真实线上环境信息。
 
 部署前建议阅读：
+
 - [`docs/DEPLOY.md`](docs/DEPLOY.md)
 
 ## 安全说明
 
 公开推送前请确认以下内容不在仓库中：
+
 - `.env` 与任何真实密钥
 - 支付证书、SMTP 凭据、私钥文件
 - 服务器 IP、SSH 登录信息、内部运维脚本
 - 用户上传内容与数据库备份
 
 本仓库默认已忽略：
+
 - `.env*`
 - `cert/`
 - `public/uploads/`
@@ -148,4 +153,3 @@ git push -u origin main
 3. 等待 GitHub Actions 运行（Actions -> Workflow），构建成功后 Pages 会在 `gh-pages` 分支上生成静态文件。
 
 注意：如果你希望站点通过 `https://<your-username>.github.io/<repo>/` 访问，且出现资源路径问题，请在 `next.config.ts` 中设置 `basePath` 为 `/<repo>`，并将 `assetPrefix` 指向相同路径，或者部署为用户/组织主页（仓库名为 `<your-username>.github.io`）。
-
