@@ -4,7 +4,6 @@ import { requireAdmin } from "@/lib/require-admin"
 import prisma from "@/lib/prisma"
 import {
   saveFile,
-  deleteFile,
   getMediaTypeFromMime,
   type MediaEntityType,
 } from "@/lib/media-storage"
