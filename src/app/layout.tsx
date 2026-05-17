@@ -10,6 +10,8 @@ import "./globals.css";
 
 export const dynamic = "force-dynamic";
 
+const isStaticExportBuild = process.env.NEXT_OUTPUT_EXPORT === "true";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -28,6 +30,21 @@ const playfair = Playfair_Display({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
+  if (isStaticExportBuild) {
+    return {
+      title: {
+        default: "Alex Zhang",
+        template: `%s | Alex Zhang`,
+      },
+      description: defaultSiteDescription,
+      icons: {
+        icon: "/icon.svg",
+        apple: "/icon.svg",
+        shortcut: "/icon.svg",
+      },
+    };
+  }
+
   const row = await getSettingsRow();
   const siteName = normalizeSiteName(row?.siteName);
   const pageCopy =
@@ -67,7 +84,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const locale = await getLocaleFromCookie();
+  const locale =
+    isStaticExportBuild ? "zh" : await getLocaleFromCookie();
   return (
     <html lang={locale === "en" ? "en" : "zh-CN"} suppressHydrationWarning>
       <head>

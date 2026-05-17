@@ -22,6 +22,8 @@ jobs:
         run: npm ci
 
       - name: Build and export static site
+        env:
+          NEXT_OUTPUT_EXPORT: "true"
         run: npm run export:static
 
       - name: Deploy to gh-pages

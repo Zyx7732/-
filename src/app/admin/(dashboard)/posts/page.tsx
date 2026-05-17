@@ -232,7 +232,7 @@ export default function PostsPage() {
               <Link href={`/admin/posts/${post.id}/edit`}><i className="ri-edit-line" /></Link>
             </Button>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0" asChild>
-              <Link href={`/blog/${post.slug}`} target="_blank"><i className="ri-eye-line" /></Link>
+              <Link href={`/zh/blog/${post.slug}`} target="_blank" rel="noopener noreferrer"><i className="ri-eye-line" /></Link>
             </Button>
             <ConfirmPopover
               title={t("确定删除该文章？", "Delete this post?")}

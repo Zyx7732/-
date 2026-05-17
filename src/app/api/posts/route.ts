@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma"
 import { normalizeCoverRatio } from "@/lib/cover-ratio"
 import { safeSyncKnowledgeSource } from "@/lib/ai/knowledge-trigger"
 import { DEFAULT_LOCALE, fromPrismaLocale, isLocale, LOCALE_COOKIE_KEY, normalizeLocale } from "@/lib/i18n"
+import { findPostIdBySlug } from "@/lib/find-post-by-slug"
 import { buildPostI18nInput, localizePost } from "@/lib/localized-content"
 
 export const dynamic = "force-dynamic"
@@ -23,14 +24,14 @@ export async function GET(request: NextRequest) {
   const fallbackLocale = fromPrismaLocale(settings?.defaultLocale)
 
   if (slug) {
-    const post = await prisma.post.findUnique({
-      where: { slug },
-      include: { category: true, tags: true, author: true },
-    })
+    const postId = await findPostIdBySlug(slug, { includeUnpublished: isAdminRole })
+    const post = postId
+      ? await prisma.post.findUnique({
+          where: { id: postId },
+          include: { category: true, tags: true, author: true },
+        })
+      : null
     if (!post) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 })
-    }
-    if (post.status !== "PUBLISHED" && !isAdminRole) {
       return NextResponse.json({ error: "Not found" }, { status: 404 })
     }
     return NextResponse.json(localizePost(post as unknown as Record<string, unknown>, locale, fallbackLocale))

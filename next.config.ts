@@ -1,9 +1,20 @@
 import type { NextConfig } from "next";
 
+const isGithubPagesBuild = process.env.NEXT_OUTPUT_EXPORT === "true";
+const pagesBasePath = "/-";
+
 const nextConfig: NextConfig = {
+  ...(isGithubPagesBuild
+    ? {
+        trailingSlash: true,
+        basePath: pagesBasePath,
+        assetPrefix: `${pagesBasePath}/`,
+      }
+    : {}),
   // 避免 Turbopack/Webpack 打包 Prisma，使用 node_modules 中的 .prisma/client
   serverExternalPackages: ["@prisma/client", "prisma", "wechatpay-node-v3"],
   images: {
+    ...(isGithubPagesBuild ? { unoptimized: true } : {}),
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "images.pexels.com" },

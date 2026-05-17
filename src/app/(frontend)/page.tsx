@@ -17,7 +17,8 @@ import type { AboutModules } from "@/lib/about-types"
 import { APP_AUTHOR, APP_VERSION, type FooterConfig } from "@/lib/version"
 import { coverRatioToCss } from "@/lib/cover-ratio"
 import { getDictionary } from "@/locales"
-import { t, type I18nDict } from "@/lib/i18n"
+import { t, type I18nDict, type Locale } from "@/lib/i18n"
+import { withLocalePath } from "@/lib/i18n-path"
 
 type Settings = {
   siteName?: string
@@ -160,7 +161,7 @@ export default function HomePage() {
         />
       )}
       {sectionVisibility.blog && (
-        <NotesSection title={notesTitle} articles={articles} coverRatio={blogCoverRatio} loading={loading} dict={dict} />
+        <NotesSection title={notesTitle} articles={articles} coverRatio={blogCoverRatio} loading={loading} dict={dict} locale={locale} />
       )}
       {sectionVisibility.tutorials && (
         <TutorialsSection title={tutorialsTitle} items={tutorials.slice(0, 4)} coverRatio={tutorialsCoverRatio} loading={loading} dict={dict} />
@@ -540,12 +541,14 @@ function NotesSection({
   coverRatio,
   loading,
   dict,
+  locale,
 }: {
   title: string
   articles: { title: string; excerpt: string | null; coverImage: string | null; date: string; slug: string; category?: { name: string } | null; tags?: TagItem[] }[]
   coverRatio?: string
   loading?: boolean
   dict: I18nDict
+  locale: Locale
 }) {
   const emptyPrefix = t(dict, "common.empty_prefix", "暂无")
   const viewAll = t(dict, "common.view_all", "查看全部")
@@ -564,7 +567,7 @@ function NotesSection({
               key={article.slug}
               delay={0.1 + index * 0.05}
             >
-              <Link href={`/blog/${article.slug}`} className="block transition-transform duration-300 hover:scale-[1.1]">
+              <Link href={withLocalePath(`/blog/${article.slug}`, locale)} className="block transition-transform duration-300 hover:scale-[1.1]">
                 <GlowBorder className="group rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden flex flex-col">
                   <div
                     className="overflow-hidden bg-muted shrink-0"

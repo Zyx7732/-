@@ -138,7 +138,7 @@ export default function BlogPage() {
         <div className="columns-2 md:columns-3 lg:columns-4 gap-5">
           {filteredPosts.map((post, index) => (
             <FadeContent key={post.id} delay={0.1 + index * 0.05} className="break-inside-avoid mb-5">
-              <Link href={`/blog/${post.slug}`} className="block transition-transform duration-300 hover:scale-[1.1]">
+              <Link href={withLocalePath(`/blog/${post.slug}`, locale)} className="block transition-transform duration-300 hover:scale-[1.1]">
                 <GlowBorder className="group rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden flex flex-col">
                   <div
                     className="overflow-hidden bg-muted shrink-0"
