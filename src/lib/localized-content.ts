@@ -1,6 +1,14 @@
 import type { Locale } from "@/lib/i18n"
-import { toI18nObject, toI18nText } from "@/lib/i18n-content"
+import { patchI18nObject, toI18nObject, toI18nText } from "@/lib/i18n-content"
 import { DEFAULT_LOCALE, resolveI18nObject, resolveI18nText } from "@/lib/i18n"
+
+/** 判断 i18n 字段是否有实质内容（空对象/空数组视为未设置）。 */
+function hasMeaningfulLocalizedValue<T>(value: T | null | undefined): value is T {
+  if (value == null) return false
+  if (Array.isArray(value)) return value.length > 0
+  if (typeof value === "object") return Object.keys(value as object).length > 0
+  return true
+}
 
 function localeText(obj: unknown, locale: Locale, fallback: Locale): string | null {
   if (!obj || typeof obj !== "object") return null
@@ -35,10 +43,11 @@ function resolveObjectWithLegacy<T>(
 ): T | null {
   if (i18nValue && typeof i18nValue === "object") {
     const exact = (i18nValue as { [key: string]: T | null | undefined })[locale]
-    if (exact != null) return exact
+    if (hasMeaningfulLocalizedValue(exact)) return exact
   }
-  if (legacyValue != null) return legacyValue
-  return localeObj<T>(i18nValue, locale, fallback)
+  if (hasMeaningfulLocalizedValue(legacyValue)) return legacyValue
+  const fallbackValue = localeObj<T>(i18nValue, locale, fallback)
+  return hasMeaningfulLocalizedValue(fallbackValue) ? fallbackValue : null
 }
 
 export function localizePost<T extends Record<string, unknown>>(row: T, locale: Locale, fallback: Locale): T {
@@ -118,6 +127,16 @@ export function localizeTag<T extends Record<string, unknown>>(row: T, locale: L
   }
 }
 
+function buildContentI18nInput(raw: { content?: unknown; contentI18n?: unknown }) {
+  if (raw.content != null) {
+    return patchI18nObject(raw.contentI18n, toI18nObject(raw.content, null))
+  }
+  if (raw.contentI18n != null) {
+    return raw.contentI18n
+  }
+  return toI18nObject(null, null)
+}
+
 export function buildPostI18nInput(raw: {
   title?: string
   slug?: string
@@ -132,7 +151,7 @@ export function buildPostI18nInput(raw: {
     titleI18n: raw.titleI18n ?? toI18nText(raw.title ?? "", null),
     slugI18n: raw.slugI18n ?? toI18nText(raw.slug ?? "", null),
     excerptI18n: raw.excerptI18n ?? toI18nText(raw.excerpt ?? null, null),
-    contentI18n: raw.contentI18n ?? toI18nObject(raw.content ?? {}, null),
+    contentI18n: buildContentI18nInput(raw),
   }
 }
 
@@ -150,7 +169,7 @@ export function buildWorkI18nInput(raw: {
     titleI18n: raw.titleI18n ?? toI18nText(raw.title ?? "", null),
     slugI18n: raw.slugI18n ?? toI18nText(raw.slug ?? "", null),
     descriptionI18n: raw.descriptionI18n ?? toI18nText(raw.description ?? null, null),
-    contentI18n: raw.contentI18n ?? toI18nObject(raw.content ?? null, null),
+    contentI18n: buildContentI18nInput(raw),
   }
 }
 
