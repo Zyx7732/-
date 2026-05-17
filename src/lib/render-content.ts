@@ -1,21 +1,23 @@
 import { blockNoteToHtml } from "@/lib/blocknote-to-html"
-import { isBlockNoteFormat, isTiptapFormat, jsonToPlainText } from "@/lib/content-format"
+import type { Block } from "@blocknote/core"
+import { isBlockNoteFormat, isTiptapFormat, jsonToPlainText, normalizeEditorContent } from "@/lib/content-format"
 
 /** 将内容转为 HTML（服务端）。支持 BlockNote 与 Tiptap 格式，其它返回 null。 */
 export function contentToHtml(content: unknown): string | null {
-  if (!content || typeof content !== "object") return null
+  const normalized = normalizeEditorContent(content)
+  if (!normalized || typeof normalized !== "object") return null
 
-  if (isBlockNoteFormat(content)) {
+  if (isBlockNoteFormat(normalized)) {
     try {
-      return blockNoteToHtml(content)
+      return blockNoteToHtml(normalized as Block[])
     } catch (e) {
       console.error("[contentToHtml] BlockNote render error:", e)
       return null
     }
   }
 
-  if (isTiptapFormat(content)) {
-    const text = jsonToPlainText(content)
+  if (isTiptapFormat(normalized)) {
+    const text = jsonToPlainText(normalized)
     if (!text.trim()) return null
     return text
       .split("\n")

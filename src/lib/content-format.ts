@@ -1,10 +1,26 @@
 /** 内容格式判断与转换：BlockNote/Tiptap 检测、纯文本抽取、HTML 转纯文本、编辑器初始内容。 */
 import type { Block } from "@blocknote/core"
 
+/** 将 Prisma/API 返回的 JSON 字段规范为对象（兼容字符串存储）。 */
+export function normalizeEditorContent(raw: unknown): unknown {
+  if (raw == null) return null
+  if (typeof raw === "string") {
+    const trimmed = raw.trim()
+    if (!trimmed) return null
+    try {
+      return JSON.parse(trimmed) as unknown
+    } catch {
+      return raw
+    }
+  }
+  return raw
+}
+
 /** 判断是否为 BlockNote 格式（Block 数组，每项有 id + type + props）。 */
 export function isBlockNoteFormat(raw: unknown): raw is Block[] {
-  if (!Array.isArray(raw) || raw.length === 0) return false
-  const first = raw[0]
+  const normalized = normalizeEditorContent(raw)
+  if (!Array.isArray(normalized) || normalized.length === 0) return false
+  const first = normalized[0]
   return (
     first != null &&
     typeof first === "object" &&
@@ -15,20 +31,22 @@ export function isBlockNoteFormat(raw: unknown): raw is Block[] {
 
 /** 判断是否为 Tiptap/ProseMirror 格式（type: 'doc' + content 数组）。 */
 export function isTiptapFormat(raw: unknown): boolean {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false
-  const obj = raw as { type?: string; content?: unknown[] }
+  const normalized = normalizeEditorContent(raw)
+  if (!normalized || typeof normalized !== "object" || Array.isArray(normalized)) return false
+  const obj = normalized as { type?: string; content?: unknown[] }
   return obj.type === "doc" && Array.isArray(obj.content)
 }
 
 /** 从 Tiptap/Slate 或 BlockNote JSON 中抽取纯文本。 */
 export function jsonToPlainText(content: unknown): string {
-  if (!content || typeof content !== "object") return ""
+  const normalized = normalizeEditorContent(content)
+  if (!normalized || typeof normalized !== "object") return ""
 
-  if (isBlockNoteFormat(content)) {
-    return extractBlockNoteText(content)
+  if (isBlockNoteFormat(normalized)) {
+    return extractBlockNoteText(normalized as Block[])
   }
 
-  const obj = content as {
+  const obj = normalized as {
     children?: Array<{ children?: Array<{ text?: string }> }>
     content?: Array<{ content?: Array<{ text?: string }>; text?: string }>
   }
@@ -112,7 +130,8 @@ export function htmlToPlainTextWithBreaks(html: string | null | undefined): stri
 
 /** 供后台富文本编辑器使用：BlockNote 格式返回原样，其他格式返回 null（编辑器会空白初始化）。 */
 export function getInitialContentForEditor(raw: unknown): Block[] | null {
-  if (raw === undefined || raw === null) return null
-  if (isBlockNoteFormat(raw)) return raw as Block[]
+  const normalized = normalizeEditorContent(raw)
+  if (normalized === undefined || normalized === null) return null
+  if (isBlockNoteFormat(normalized)) return normalized as Block[]
   return null
 }

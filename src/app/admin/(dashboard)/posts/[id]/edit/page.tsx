@@ -18,6 +18,7 @@ import { CategoryCombobox } from "@/components/admin/CategoryCombobox"
 import { TagCombobox } from "@/components/admin/TagCombobox"
 import { useAdminUiLocale } from "@/contexts/AdminUiLocaleContext"
 import { getInitialContentForEditor } from "@/lib/content-format"
+import { resolvePostContent } from "@/lib/localized-content"
 import {
   DEFAULT_COVER_RATIO,
   coverRatioToCss,
@@ -74,7 +75,15 @@ export default function EditPostPage() {
         setSlug(post.slug ?? "")
         setSlugEn(post.slugI18n?.en ?? "")
         setOriginalSlug(post.slug ?? "")
-        setContent(getInitialContentForEditor(post.content))
+        setContent(
+          getInitialContentForEditor(
+            resolvePostContent(
+              post as { content?: unknown; contentI18n?: unknown },
+              locale === "en" ? "en" : "zh",
+              "zh",
+            ),
+          ),
+        )
         setExcerpt(post.excerpt ?? "")
         setExcerptEn(post.excerptI18n?.en ?? "")
         setCoverImage(post.coverImage ?? "")

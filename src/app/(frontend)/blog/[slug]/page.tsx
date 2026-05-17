@@ -17,7 +17,7 @@ import { withLocalePath } from "@/lib/i18n-path"
 import { auth } from "@/lib/auth"
 import { getFrontendSettings } from "@/lib/settings-server"
 import { getSettingsRow } from "@/lib/settings-db"
-import { localizePost } from "@/lib/localized-content"
+import { localizePost, resolvePostContent } from "@/lib/localized-content"
 import { resolveWithFallbackObject } from "@/lib/i18n-content"
 
 interface BlogPostPageProps {
@@ -69,8 +69,13 @@ export async function renderBlogPostPage({ slug, locale }: BlogPostViewProps) {
       ? (about.profileCard as Record<string, unknown>)
       : {}
 
-  const contentHtml = contentToHtml(post.content)
-  const bodyPlain = jsonToPlainText(post.content)
+  const displayContent = resolvePostContent(
+    postRow as { content?: unknown; contentI18n?: unknown },
+    resolvedLocale,
+    fallbackLocale,
+  )
+  const contentHtml = contentToHtml(displayContent)
+  const bodyPlain = jsonToPlainText(displayContent)
   const categoryName = (post.category as { name?: string } | null | undefined)?.name ?? ""
   const tags = Array.isArray(post.tags) ? (post.tags as { id: string; name: string }[]) : []
   const author = post.author as { avatar?: string | null; name?: string | null } | null | undefined

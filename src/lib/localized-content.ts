@@ -1,4 +1,5 @@
 import type { Locale } from "@/lib/i18n"
+import { isBlockNoteFormat, isTiptapFormat, normalizeEditorContent } from "@/lib/content-format"
 import { patchI18nObject, toI18nObject, toI18nText } from "@/lib/i18n-content"
 import { DEFAULT_LOCALE, resolveI18nObject, resolveI18nText } from "@/lib/i18n"
 
@@ -35,6 +36,27 @@ function resolveTextWithLegacy(
   return localeText(i18nValue, locale, fallback)
 }
 
+function isRenderableEditorContent(value: unknown): boolean {
+  return isBlockNoteFormat(value) || isTiptapFormat(value)
+}
+
+/** 解析文章正文：优先使用 content 列中的 BlockNote/Tiptap，避免空的 contentI18n.zh 占位。 */
+export function resolvePostContent(
+  row: { content?: unknown; contentI18n?: unknown },
+  locale: Locale,
+  fallback: Locale = DEFAULT_LOCALE,
+): unknown {
+  const legacy = normalizeEditorContent(row.content)
+  if (isRenderableEditorContent(legacy)) return legacy
+
+  const fromI18n = resolveObjectWithLegacy(row.contentI18n, null, locale, fallback)
+  if (isRenderableEditorContent(fromI18n)) return fromI18n
+  if (hasMeaningfulLocalizedValue(fromI18n)) return fromI18n
+  if (hasMeaningfulLocalizedValue(legacy)) return legacy
+
+  return legacy ?? fromI18n
+}
+
 function resolveObjectWithLegacy<T>(
   i18nValue: unknown,
   legacyValue: T | null | undefined,
@@ -56,7 +78,7 @@ export function localizePost<T extends Record<string, unknown>>(row: T, locale: 
     title: resolveTextWithLegacy(row.titleI18n, row.title as string, locale, fallback) ?? (row.title as string),
     slug: resolveTextWithLegacy(row.slugI18n, row.slug as string, locale, fallback) ?? (row.slug as string),
     excerpt: resolveTextWithLegacy(row.excerptI18n, row.excerpt as string | null, locale, fallback) ?? (row.excerpt as string | null),
-    content: resolveObjectWithLegacy(row.contentI18n, row.content, locale, fallback) ?? row.content,
+    content: resolvePostContent(row as { content?: unknown; contentI18n?: unknown }, locale, fallback),
     category:
       row.category && typeof row.category === "object"
         ? localizeCategory(row.category as Record<string, unknown>, locale, fallback)
@@ -77,7 +99,7 @@ export function localizeWork<T extends Record<string, unknown>>(row: T, locale: 
     title: resolveTextWithLegacy(row.titleI18n, row.title as string, locale, fallback) ?? (row.title as string),
     slug: resolveTextWithLegacy(row.slugI18n, row.slug as string, locale, fallback) ?? (row.slug as string),
     description: resolveTextWithLegacy(row.descriptionI18n, row.description as string | null, locale, fallback) ?? (row.description as string | null),
-    content: resolveObjectWithLegacy(row.contentI18n, row.content, locale, fallback) ?? row.content,
+    content: resolvePostContent(row as { content?: unknown; contentI18n?: unknown }, locale, fallback),
     category:
       row.category && typeof row.category === "object"
         ? localizeCategory(row.category as Record<string, unknown>, locale, fallback)
@@ -129,7 +151,8 @@ export function localizeTag<T extends Record<string, unknown>>(row: T, locale: L
 
 function buildContentI18nInput(raw: { content?: unknown; contentI18n?: unknown }) {
   if (raw.content != null) {
-    return patchI18nObject(raw.contentI18n, toI18nObject(raw.content, null))
+    const normalized = normalizeEditorContent(raw.content)
+    return patchI18nObject(raw.contentI18n, toI18nObject(normalized, null))
   }
   if (raw.contentI18n != null) {
     return raw.contentI18n
